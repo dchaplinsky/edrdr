@@ -1,0 +1,9 @@
+Django==2.0.4
+Jinja2==2.10
+redis==2.10.6
+redispy==3.0.0
+requests==2.18.4
+requests-cache==0.4.13
+tokenize-uk==0.2.0
+translitua==1.2.4
+psycopg2==2.7.3.2
