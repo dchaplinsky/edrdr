@@ -33,14 +33,14 @@ class CompanyRecord(models.Model):
         8: _("ліквідація"),
     }
 
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="records")
     company_hash = models.CharField("Ключ дедуплікації", max_length=40, primary_key=True)
     name = models.TextField("Назва компанії")
     short_name = models.TextField("Скорочена назва компанії", blank=True)
     location = models.TextField("Адреса реєстрації", blank=True)
     company_profile = models.TextField("Основний вид діяльності", blank=True)
-    status = models.IntegerField(choices=COMPANY_STATUSES.items())
-    revisions = ArrayField(models.IntegerField(), default=list)
+    status = models.IntegerField(choices=COMPANY_STATUSES.items(), verbose_name="Статус компанії")
+    revisions = ArrayField(models.IntegerField(), default=list, verbose_name="Ревізії")
 
     @classmethod
     def get_status(cls, status):
@@ -60,17 +60,17 @@ class Person(models.Model):
         "founder": _("Засновник"),
         "owner": _("Бенефіціарний власник"),
     }
-    name = models.TextField()
+    name = ArrayField(models.TextField(), default=[], verbose_name="Імена")
     person_hash = models.TextField(
         "Ключ дедуплікації", primary_key=True,
-        default="stupid django"
     )
 
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name="Компанія",
+                                related_name="persons")
     person_type = models.CharField(max_length=10, choices=PERSON_TYPES.items())
-    address = models.TextField(blank=True)
-    country = models.TextField(blank=True)
-    raw_record = models.TextField(blank=True)
-    tokenized_record = models.TextField(blank=True)
-    share = models.TextField(blank=True)
-    revisions = ArrayField(models.IntegerField(), default=list)
+    address = ArrayField(models.TextField(), default=[], verbose_name="Адреси")
+    country = ArrayField(models.TextField(), default=[], verbose_name="Країни")
+    raw_record = models.TextField(blank=True, verbose_name="Оригінал запису")
+    tokenized_record = models.TextField(blank=True, verbose_name="Токенізований запис")
+    share = models.TextField(blank=True, verbose_name="Уставний внесок")
+    revisions = ArrayField(models.IntegerField(), default=list, verbose_name="Ревізії")

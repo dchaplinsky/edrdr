@@ -26,7 +26,7 @@ SECRET_KEY = 'tg=jh69mhw%*rd)o93^e5d8gu6+2v!)y5dy+$o$o&qt_io*#)c'
 DEBUG = True
 
 ALLOWED_HOSTS = []
-
+LANGUAGE_CODE = 'uk'
 
 # Application definition
 
@@ -50,6 +50,18 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+if DEBUG:
+    INSTALLED_APPS += [
+        'debug_toolbar',
+    ]
+
+    MIDDLEWARE += [
+        'debug_toolbar.middleware.DebugToolbarMiddleware',
+    ]
+
+    INTERNAL_IPS = ["127.0.0.1"]
+
 
 ROOT_URLCONF = 'edrdr.urls'
 
@@ -153,7 +165,7 @@ CACHEOPS = {
 
 CACHEOPS_DEGRADE_ON_FAILURE = True
 
-PARSING_REDIS = "redis://localhost:6379/3"
+PARSING_REDIS = "redis://localhost:6379/4"
 PROXY = None
 PATH_TO_SECRET_SAUCE = ""
 
