@@ -4,7 +4,7 @@ from collections import OrderedDict, defaultdict
 
 
 class CompanyDetail(DetailView):
-    context_object_name: 'Company'
+    context_object_name = 'Company'
     queryset = Company.objects.prefetch_related("records", "persons")
 
     def group_revisions(self, revisions, records, hash_field_getter):
