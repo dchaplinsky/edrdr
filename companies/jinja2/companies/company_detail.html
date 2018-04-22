@@ -22,7 +22,7 @@
     {{ latest_record.get_status_display() }} <br />
     {{ latest_record.location }} <br />
     {{ latest_record.company_profile }} <br />
-    Оновлено від <a href="#">{{ global_revisions[latest_record_revision].created|datetime }}</a>
+    Оновлено від <a href="{{ global_revisions[latest_record_revision].get_absolute_url() }}">{{ global_revisions[latest_record_revision].created|datetime }}</a>
     <hr />
 
     {% if latest_persons %}
@@ -34,7 +34,7 @@
             </li>
             {% endfor %}
         </ul>
-        Оновлено від <a href="#">{{ global_revisions[latest_persons_revision].created|datetime }}</a>
+        Оновлено від <a href="{{ global_revisions[latest_persons_revision].get_absolute_url() }}">{{ global_revisions[latest_persons_revision].created|datetime }}</a>
     {% endif %}
     <hr />
     <h3>Історія змін компанії</h3>
@@ -54,9 +54,10 @@
                 <tr>
                     <td>
                         {% if group.start_revision == group.finish_revision %}
-                            <a href="#">{{ group.start_revision.created|datetime }}</a>
+                            <a href="{{ group.start_revision.get_absolute_url() }}">{{ group.start_revision.created|datetime }}</a>
                         {% else %}
-                            <a href="#">{{ group.start_revision.created|datetime }}—<br/>{{ group.finish_revision.created|datetime }}</a>
+                            <a href="{{ group.start_revision.get_absolute_url() }}">{{ group.start_revision.created|datetime }}</a>—<br/>
+                            <a href="{{ group.finish_revision.get_absolute_url() }}">{{ group.finish_revision.created|datetime }}</a>
                         {% endif %}
                     </td>
                     <td>{% if group.record.name %}{{ group.record.name }}{% endif %}</td>
@@ -84,9 +85,10 @@
                 <tr>
                     <td>
                         {% if group.start_revision == group.finish_revision %}
-                            <a href="#">{{ group.start_revision.created|datetime }}</a>
+                            <a href="{{ group.start_revision.get_absolute_url() }}">{{ group.start_revision.created|datetime }}</a>
                         {% else %}
-                            <a href="#">{{ group.start_revision.created|datetime }}—<br/>{{ group.finish_revision.created|datetime }}</a>
+                            <a href="{{ group.start_revision.get_absolute_url() }}">{{ group.start_revision.created|datetime }}</a>—<br/>
+                            <a href="{{ group.finish_revision.get_absolute_url() }}">{{ group.finish_revision.created|datetime }}</a>
                         {% endif %}
                     </td>
                     <td>

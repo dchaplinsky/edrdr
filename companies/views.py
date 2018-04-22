@@ -3,8 +3,13 @@ from companies.models import Company, Revision
 from collections import OrderedDict, defaultdict
 
 
+class RevisionDetail(DetailView):
+    context_object_name = 'revision'
+    queryset = Revision.objects.all()
+
+
 class CompanyDetail(DetailView):
-    context_object_name = 'Company'
+    context_object_name = 'company'
     queryset = Company.objects.prefetch_related("records", "persons")
 
     def group_revisions(self, revisions, records, hash_field_getter):

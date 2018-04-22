@@ -7,3 +7,5 @@ requests-cache==0.4.13
 tokenize-uk==0.2.0
 translitua==1.2.4
 psycopg2==2.7.3.2
+tqdm==4.23.0
+python-dateutil==2.7.2

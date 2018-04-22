@@ -1,0 +1,17 @@
+{% extends "companies/base.html" %}
+
+{% block header %}
+Копія ЄДР {{ revision.revision_id }} від {{ revision.created }}
+{% endblock %}
+
+{% if revision.imported %}
+{% block subheader %}
+завантажена повністю
+{% endblock %}
+{% endif %}
+
+
+{% block content %}
+<p><a href="{{ revision.url }}">Файл даних</a></p>
+<p><a href="http://data.gov.ua/passport/{{ revision.dataset_id }}/version/{{ revision.revision_id }}">Паспорт даних</a></p>
+{% endblock %}

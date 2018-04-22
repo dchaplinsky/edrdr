@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils.translation import ugettext_noop as _
 from django.contrib.postgres.fields import ArrayField
+from django.urls import reverse
 from companies.exceptions import StatusDoesntExist
 
 
@@ -11,9 +12,15 @@ class Revision(models.Model):
     imported = models.BooleanField("Імпорт завершено", default=False)
     url = models.URLField("Посилання на набір данних")
 
+    def get_absolute_url(self):
+        return reverse('revision>detail', kwargs={'pk': self.pk})
+
 
 class Company(models.Model):
     edrpou = models.IntegerField(primary_key=True)
+
+    def get_absolute_url(self):
+        return reverse('company>detail', kwargs={'pk': self.pk})
 
     class Meta:
         verbose_name = "Company"

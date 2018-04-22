@@ -15,13 +15,13 @@ Including another URLconf
 """
 from django.conf.urls import include, url
 from django.conf import settings
-from django.urls import path, re_path
+from django.urls import path
 from django.contrib import admin
-from companies.views import CompanyDetail
+from companies.views import CompanyDetail, RevisionDetail
 
 urlpatterns = [
     path('company/<int:pk>', CompanyDetail.as_view(), name='company>detail'),
-    re_path('company2/(?P<pk>\d+)$', CompanyDetail.as_view(), name='company>detail2'),
+    path('revision/<int:pk>', RevisionDetail.as_view(), name='revision>detail'),
     url(r'^admin/', admin.site.urls),
 ]
 
