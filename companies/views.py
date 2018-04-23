@@ -70,7 +70,7 @@ class CompanyDetail(DetailView):
         latest_persons_revision = 0
         global_revisions = OrderedDict([
             (r.pk, r)
-            for r in Revision.objects.order_by("pk")
+            for r in Revision.objects.filter(imported=True).order_by("pk")
         ])
 
         for rec in obj.records.all():
