@@ -3,6 +3,7 @@ from django.utils.translation import ugettext_noop as _
 from django.contrib.postgres.fields import ArrayField
 from django.urls import reverse
 from companies.exceptions import StatusDoesntExist
+from tokenize_uk import tokenize_words
 
 
 class Revision(models.Model):
@@ -19,8 +20,12 @@ class Revision(models.Model):
 class Company(models.Model):
     edrpou = models.IntegerField(primary_key=True)
 
+    @property
+    def full_edrpou(self):
+        return str(self.pk).rjust(8, "0")
+
     def get_absolute_url(self):
-        return reverse('company>detail', kwargs={'pk': self.pk})
+        return reverse('company>detail', kwargs={'pk': self.full_edrpou})
 
     class Meta:
         verbose_name = "Company"
@@ -56,6 +61,15 @@ class CompanyRecord(models.Model):
                 return k
         else:
             raise StatusDoesntExist("Cannot find status {}".format(status))
+
+    @property
+    def org_form(self):
+        if self.short_name.strip():
+            tokenized = tokenize_words(self.short_name)
+            if tokenized:
+                return tokenized[0].upper()
+
+        return "NONE"
 
     class Meta:
         index_together = ("company", "company_hash")
