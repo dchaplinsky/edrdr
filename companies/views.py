@@ -5,7 +5,7 @@ from collections import OrderedDict, defaultdict, Counter
 
 class RevisionDetail(DetailView):
     context_object_name = 'revision'
-    queryset = Revision.objects.all()
+    queryset = Revision.objects.filter(ignore=False)
 
 
 class CompanyDetail(DetailView):
@@ -20,9 +20,6 @@ class CompanyDetail(DetailView):
         "в стані припинення",
         "припинено",
     )
-
-    weirdo_counter = Counter()
-    pairs_counter = Counter()
 
     def group_revisions(self, revisions, records, hash_field_getter):
         periods = []
@@ -48,8 +45,11 @@ class CompanyDetail(DetailView):
                     # Record disappeared from a history at some point
                     add_group(current_record)
                     current_hash = None
+                    start_revision = revision
+                    finish_revision = revision
                 else:
-                    pass
+                    start_revision = revision
+                    finish_revision = revision
                     # Record for that company wasn't
                     # present at the time of given revision
                 continue
@@ -79,12 +79,6 @@ class CompanyDetail(DetailView):
             except ValueError:
                 return 10
 
-        self.pairs_counter.update(
-            [
-                tuple(sorted([a.get_status_display().lower(), b.get_status_display().lower()]))
-            ]
-        )
-
         a_pos = get_pos(a)
         b_pos = get_pos(b)
 
@@ -93,13 +87,6 @@ class CompanyDetail(DetailView):
         elif b_pos > a_pos:
             return b
         else:
-            self.weirdo_counter.update(
-                [
-                    (a.get_status_display().lower(),
-                     a.org_form,
-                     b.org_form)
-                ]
-            )
             return a
 
     def key_by_company_status(self, obj):
@@ -111,9 +98,6 @@ class CompanyDetail(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         obj = kwargs["object"]
-    # def get_context_data(self, obj, context):
-        # context = super().get_context_data(**kwargs)
-        # obj = kwargs["object"]
 
         used_revisions = set()
         latest_record = None
@@ -124,7 +108,7 @@ class CompanyDetail(DetailView):
         latest_persons_revision = 0
         global_revisions = OrderedDict([
             (r.pk, r)
-            for r in Revision.objects.filter(imported=True).order_by("pk")
+            for r in Revision.objects.filter(imported=True, ignore=False).order_by("pk")
         ])
 
         for rec in obj.records.all():

@@ -11,6 +11,7 @@ class Revision(models.Model):
     dataset_id = models.TextField("Датасет")
     created = models.DateTimeField("Дата створення")
     imported = models.BooleanField("Імпорт завершено", default=False)
+    ignore = models.BooleanField("Ігнорувати через помилки імпорту", default=False)
     url = models.URLField("Посилання на набір данних")
 
     def get_absolute_url(self):
