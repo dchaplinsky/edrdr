@@ -9,3 +9,6 @@ translitua==1.2.4
 psycopg2==2.7.3.2
 tqdm==4.23.0
 python-dateutil==2.7.2
+elasticsearch_dsl<6,>=5s
+Js2Py==0.59
+python-Levenshtein==0.12.0

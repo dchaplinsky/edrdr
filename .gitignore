@@ -67,3 +67,4 @@ node_modules/
 
 *.sqlite
 *.yaml
+companies/tools/address_parser.py

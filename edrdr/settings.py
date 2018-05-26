@@ -23,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'tg=jh69mhw%*rd)o93^e5d8gu6+2v!)y5dy+$o$o&qt_io*#)c'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = []
 LANGUAGE_CODE = 'uk'
@@ -167,7 +167,16 @@ CACHEOPS_DEGRADE_ON_FAILURE = True
 
 PARSING_REDIS = "redis://localhost:6379/4"
 PROXY = None
+
 PATH_TO_SECRET_SAUCE = ""
+
+# Setup Elasticsearch default connection
+ELASTICSEARCH_CONNECTIONS = {
+    'default': {
+        'hosts': 'localhost',
+        'timeout': 20
+    }
+}
 
 try:
     from .local_settings import *
@@ -176,5 +185,5 @@ except ImportError:
 
 
 # # Init Elasticsearch connections
-# from elasticsearch_dsl import connections
-# connections.connections.configure(**ELASTICSEARCH_CONNECTIONS)
+from elasticsearch_dsl import connections
+connections.connections.configure(**ELASTICSEARCH_CONNECTIONS)

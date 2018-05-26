@@ -3,7 +3,7 @@ from django.utils.translation import ugettext_noop as _
 from django.contrib.postgres.fields import ArrayField
 from django.urls import reverse
 from companies.exceptions import StatusDoesntExist
-from tokenize_uk import tokenize_words
+# from tokenize_uk import tokenize_words
 
 
 class Revision(models.Model):
@@ -54,6 +54,14 @@ class CompanyRecord(models.Model):
     company_profile = models.TextField("Основний вид діяльності", blank=True)
     status = models.IntegerField(choices=COMPANY_STATUSES.items(), verbose_name="Статус компанії")
     revisions = ArrayField(models.IntegerField(), default=list, verbose_name="Ревізії")
+
+    location_postal_code = models.CharField("Індекс", max_length=40, default="")
+    location_region = models.CharField("Регіон", max_length=100, default="")
+    location_locality = models.CharField("Місто", max_length=100, default="")
+    location_district = models.CharField("Район", max_length=100, default="")
+    location_street_address = models.CharField("Вулиця/дім", max_length=200, default="")
+    location_apartment = models.CharField("Квартира/офіс/кімната", max_length=100, default="")
+    location_parsing_quality = models.FloatField("Якість парсингу адреси", default=0)
 
     @classmethod
     def get_status(cls, status):
