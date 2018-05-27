@@ -168,6 +168,7 @@ CACHEOPS_DEGRADE_ON_FAILURE = True
 PARSING_REDIS = "redis://localhost:6379/4"
 PROXY = None
 
+NUM_THREADS = 4
 PATH_TO_SECRET_SAUCE = ""
 
 # Setup Elasticsearch default connection

@@ -46,6 +46,5 @@ class Command(BaseCommand):
                     if len(docs_to_index) > 10000:
                         self.bulk_write(conn, docs_to_index)
                         docs_to_index = []
-                        break
 
         self.bulk_write(conn, docs_to_index)

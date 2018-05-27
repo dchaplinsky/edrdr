@@ -1,38 +1,73 @@
-from tqdm import tqdm
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.conf import settings
+
 from Levenshtein import distance
+from tqdm import tqdm
 from multiprocessing import Pool
 
 from companies.models import CompanyRecord
 from companies.tools.address_parser import PyJsHoisted_getAddress_ as get_address
+from companies.elastic_models import Address
 
 
 def parse_and_modify(rec):
     parsed = get_address(rec.location)
 
-    if str(parsed["postalCode"]) != "undefined":
-        rec.location_postal_code = str(parsed["postalCode"])
-    if str(parsed["region"]) != "undefined":
-        rec.location_region = str(parsed["region"])
-    if str(parsed["district"]) != "undefined":
-        rec.location_district = str(parsed["district"])
-    if str(parsed["locality"]) != "undefined":
-        rec.location_locality = str(parsed["locality"])
-    if str(parsed["streetAddress"]) != "undefined":
-        rec.location_street_address = str(parsed["streetAddress"])
-    if str(parsed["apartment"]) != "undefined":
-        rec.location_apartment = str(parsed["apartment"])
+    mapping = {
+        "postalCode": "location_postal_code",
+        "region": "location_region",
+        "district": "location_district",
+        "locality": "location_locality",
+        "streetAddress": "location_street_address",
+        "apartment": "location_apartment"
+    }
 
-    rec.location_parsing_quality = distance(rec.location, str(parsed["fullAddress"]))
+    # Replacing fucking JS wrapper with native dict
+    parsed = {k.to_py(): parsed[k].to_py() for k in parsed}
+
+    for k, v in mapping.items():
+        if parsed.get(k) is None:
+            parsed[k] = ""
+        setattr(rec, v, parsed[k])
+
+    if "streetNumber" in parsed:
+        parsed["streetAddress"] += ', ' + parsed["streetNumber"]
+
+    rec.location_parsing_quality = distance(
+        rec.location.lower(),
+        parsed["fullAddress"].lower()
+    )
+
+    validated_mapping = {
+        "postalCode": "validated_location_postal_code",
+        "region": "validated_location_region",
+        "district": "validated_location_district",
+        "locality": "validated_location_locality",
+        "streetAddress": "validated_location_street_address",
+        "apartment": "validated_location_apartment"
+    }
+
+    validated_address = Address.validate(parsed)
+
+    for k, v in validated_mapping.items():
+        if validated_address.get(k) is None:
+            validated_address[k] = ""
+        setattr(rec, v, validated_address[k])
+
     return rec
 
 
 class Command(BaseCommand):
+    def write_to_db(self, rec_buffer):
+        with transaction.atomic():
+            for r in rec_buffer:
+                r.save()
+
     def handle(self, *args, **options):
         num = CompanyRecord.objects.count()
         rec_buffer = []
-        my_tiny_pool = Pool(4)
+        my_tiny_pool = Pool(settings.NUM_THREADS)
 
         with tqdm(total=num) as pbar:
             for company_rec in CompanyRecord.objects.all().only(
@@ -43,26 +78,22 @@ class Command(BaseCommand):
 
                 rec_buffer.append(company_rec)
 
-                if len(rec_buffer) > 1000:
-                    with transaction.atomic():
-                        rec_buffer = list(
-                            filter(
-                                None,
-                                my_tiny_pool.map(parse_and_modify, rec_buffer)
-                            )
+                if len(rec_buffer) > settings.NUM_THREADS * 100:
+                    rec_buffer = list(
+                        filter(
+                            None,
+                            my_tiny_pool.map(parse_and_modify, rec_buffer)
                         )
+                    )
 
-                        for r in rec_buffer:
-                            r.save()
+                    self.write_to_db(rec_buffer)
                     rec_buffer = []
 
-            with transaction.atomic():
-                rec_buffer = list(
-                    filter(
-                        None,
-                        my_tiny_pool.map(parse_and_modify, rec_buffer)
-                    )
+            rec_buffer = list(
+                filter(
+                    None,
+                    my_tiny_pool.map(parse_and_modify, rec_buffer)
                 )
+            )
 
-                for r in rec_buffer:
-                    r.save()
+            self.write_to_db(rec_buffer)
