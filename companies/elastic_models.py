@@ -1,8 +1,11 @@
 from Levenshtein import distance
-from elasticsearch_dsl import DocType, Keyword, Text, Index, analyzer, tokenizer, token_filter, MultiSearch, MetaField
+from elasticsearch_dsl import (
+    DocType, Keyword, Text, Index, analyzer, tokenizer, token_filter,
+    MultiSearch, MetaField, Object)
 from elasticsearch_dsl.query import Q
 
 ADDRESSES_INDEX = 'addresses'
+COMPANIES_INDEX = 'edrdr_companies'
 
 
 class Address(DocType):
@@ -184,3 +187,18 @@ shingle_analyzer = analyzer(
 )
 
 addresses_idx.analyzer(shingle_analyzer)
+
+
+class Company(DocType):
+    """Company document."""
+
+    full_edrpou = Keyword(index=True, copy_to="all")
+    addresses = Text(analyzer='ukrainian')
+    persons = Text(analyzer='ukrainian')
+    companies = Text(analyzer='ukrainian')
+    company_profiles = Keyword(index=True, copy_to="all")
+    latest_record = Object()
+    raw_records = Text(analyzer='ukrainian')
+
+    class Meta:
+        index = COMPANIES_INDEX

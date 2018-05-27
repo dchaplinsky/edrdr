@@ -2,8 +2,12 @@ from django.db import models
 from django.utils.translation import ugettext_noop as _
 from django.contrib.postgres.fields import ArrayField
 from django.urls import reverse
-from companies.exceptions import StatusDoesntExist
+from django.forms.models import model_to_dict
+
 from tokenize_uk import tokenize_words
+
+from companies.exceptions import StatusDoesntExist
+from companies.tools.names import TRANSLITERATOR, parse_fullname
 
 
 class Revision(models.Model):
@@ -27,6 +31,62 @@ class Company(models.Model):
 
     def get_absolute_url(self):
         return reverse('company>detail', kwargs={'pk': self.full_edrpou})
+
+    def to_dict(self):
+        addresses = set()
+        persons = set()
+        all_persons = set()
+        companies = set()
+        company_profiles = set()
+        raw_records = set()
+
+        companies.add(self.full_edrpou)
+        companies.add(str(self.pk))
+
+        latest_record = None
+        latest_revision = 0
+        for company_record in self.records.all():
+            addresses.add(company_record.location)
+            addresses.add(company_record.parsed_location)
+            addresses.add(company_record.validated_location)
+
+            company_profiles.add(company_record.company_profile)
+            companies.add(company_record.name)
+            companies.add(company_record.short_name)
+            if max(company_record.revisions) > latest_revision:
+                latest_record = company_record
+                latest_revision = max(company_record.revisions)
+
+        for person in self.persons.all():
+            for name in person.name:
+                persons.add(
+                    (name, person.get_person_type_display())
+                )
+
+                for addr in person.address:
+                    addresses.add(addr)
+
+                for country in person.country:
+                    addresses.add(country)
+
+                raw_records.add(person.raw_record)
+
+        for name, position in persons:
+            all_persons.add("{}, {}".format(name, position))
+
+            l, f, p, _ = parse_fullname(name)
+            for tr_name in TRANSLITERATOR.transliterate(l, f, p):
+                all_persons.add("{}, {}".format(tr_name, position))
+
+        return {
+            "full_edrpou": self.full_edrpou,
+            "addresses": list(filter(None, addresses)),
+            "persons": list(filter(None, all_persons)),
+            "companies": list(filter(None, companies)),
+            "company_profiles": list(filter(None, company_profiles)),
+            "latest_record": latest_record.to_dict(),
+            "raw_records": list(filter(None, raw_records)),
+        }
 
     class Meta:
         verbose_name = "Company"
@@ -113,6 +173,16 @@ class CompanyRecord(models.Model):
             ])
         )
 
+    def to_dict(self):
+        dct = model_to_dict(self, fields=[
+            "name",
+            "short_name",
+            "location",
+            "company_profile",
+        ])
+
+        dct["status"] = self.get_status_display()
+        return dct
 
     class Meta:
         index_together = ("company", "company_hash")
