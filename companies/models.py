@@ -87,6 +87,33 @@ class CompanyRecord(models.Model):
 
         return "NONE"
 
+    @property
+    def parsed_location(self):
+        return ", ".join(
+            filter(None, [
+                self.location_postal_code,
+                self.location_region,
+                self.location_district,
+                self.location_locality,
+                self.location_street_address,
+                self.location_apartment
+            ])
+        )
+
+    @property
+    def validated_location(self):
+        return ", ".join(
+            filter(None, [
+                self.validated_location_postal_code,
+                self.validated_location_region,
+                self.validated_location_district,
+                self.validated_location_locality,
+                self.validated_location_street_address,
+                self.validated_location_apartment
+            ])
+        )
+
+
     class Meta:
         index_together = ("company", "company_hash")
 

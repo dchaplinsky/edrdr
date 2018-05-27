@@ -26,14 +26,6 @@ def parse_and_modify(rec):
     # Replacing fucking JS wrapper with native dict
     parsed = {k.to_py(): parsed[k].to_py() for k in parsed}
 
-    for k, v in mapping.items():
-        if parsed.get(k) is None:
-            parsed[k] = ""
-        setattr(rec, v, parsed[k])
-
-    if "streetNumber" in parsed:
-        parsed["streetAddress"] += ', ' + parsed["streetNumber"]
-
     rec.location_parsing_quality = distance(
         rec.location.lower(),
         parsed["fullAddress"].lower()
@@ -50,6 +42,14 @@ def parse_and_modify(rec):
 
     validated_address = Address.validate(parsed)
 
+    if "streetNumber" in parsed:
+        parsed["streetAddress"] += ', ' + parsed["streetNumber"]
+
+    for k, v in mapping.items():
+        if parsed.get(k) is None:
+            parsed[k] = ""
+        setattr(rec, v, parsed[k])
+
     for k, v in validated_mapping.items():
         if validated_address.get(k) is None:
             validated_address[k] = ""
@@ -59,6 +59,15 @@ def parse_and_modify(rec):
 
 
 class Command(BaseCommand):
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--parse_all',
+            action='store_true',
+            dest='parse_all',
+            default=False,
+            help='Parse all records again (slow!)',
+        )
+
     def write_to_db(self, rec_buffer):
         with transaction.atomic():
             for r in rec_buffer:
@@ -69,11 +78,19 @@ class Command(BaseCommand):
         rec_buffer = []
         my_tiny_pool = Pool(settings.NUM_THREADS)
 
+        if options["parse_all"]:
+            qs = CompanyRecord.objects.all()
+        else:
+            qs = CompanyRecord.objects.filter(location_street_address="")
+
         with tqdm(total=num) as pbar:
-            for company_rec in CompanyRecord.objects.all().only(
+            for company_rec in qs.only(
                     "location", "location_postal_code", "location_region", "location_district",
                     "location_locality", "location_street_address", "location_apartment",
-                    "location_parsing_quality").iterator():
+                    "location_parsing_quality", "validated_location_postal_code",
+                    "validated_location_region", "validated_location_district",
+                    "validated_location_locality", "validated_location_street_address",
+                    "validated_location_apartment").iterator():
                 pbar.update(1)
 
                 rec_buffer.append(company_rec)
