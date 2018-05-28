@@ -1,0 +1,18 @@
+{% extends "companies/base.html" %}
+
+{% block header %}
+Шукати тут
+
+<form action="{{ url("search>suggest") }}" method="GET">
+    <div class="input-group">
+        <input type="text" class="form-control" placeholder="Введіть ім'я або назву компанії" name="q" data-provide="typeahead" id="search-form" autocomplete="off" data-endpoint="{{ url("search>suggest") }}" />
+        <input type="hidden" name="is_exact" value="" />
+        <span class="input-group-btn"><button class="btn btn-danger" type="submit">Перевірити</button></span>
+    </div>
+</form>
+
+{% endblock %}
+
+
+{% block content %}
+{% endblock %}

@@ -1,3 +1,5 @@
+from django.conf import settings
+
 from Levenshtein import distance
 from elasticsearch_dsl import (
     DocType, Keyword, Text, Index, analyzer, tokenizer, token_filter,
@@ -162,7 +164,7 @@ class Address(DocType):
 addresses_idx = Index(ADDRESSES_INDEX)
 
 addresses_idx.settings(
-    number_of_shards=1
+    number_of_shards=settings.NUM_THREADS
 )
 
 addresses_idx.doc_type(Address)
@@ -188,7 +190,37 @@ shingle_analyzer = analyzer(
 
 addresses_idx.analyzer(shingle_analyzer)
 
+companies_idx = Index(COMPANIES_INDEX)
+companies_idx.settings(
+    number_of_shards=settings.NUM_THREADS
+)
 
+namesAutocompleteAnalyzer = analyzer(
+    'namesAutocompleteAnalyzer',
+    tokenizer=tokenizer(
+        'autocompleteTokenizer',
+        type='edge_ngram',
+        min_gram=2,
+        max_gram=20,
+        token_chars=[
+            'letter',
+            'digit'
+        ]
+    ),
+    filter=[
+        "lowercase"
+    ]
+)
+namesAutocompleteSearchAnalyzer = analyzer(
+    'namesAutocompleteSearchAnalyzer',
+    tokenizer=tokenizer("lowercase")
+)
+
+companies_idx.analyzer(namesAutocompleteAnalyzer)
+companies_idx.analyzer(namesAutocompleteSearchAnalyzer)
+
+
+@companies_idx.doc_type
 class Company(DocType):
     """Company document."""
 
@@ -199,6 +231,10 @@ class Company(DocType):
     company_profiles = Keyword(index=True, copy_to="all")
     latest_record = Object()
     raw_records = Text(analyzer='ukrainian')
+    names_autocomplete = Text(
+        analyzer='namesAutocompleteAnalyzer',
+        search_analyzer="namesAutocompleteSearchAnalyzer"
+    )
 
     class Meta:
-        index = COMPANIES_INDEX
+        pass

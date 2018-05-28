@@ -1,6 +1,12 @@
+from django.views import View
 from django.views.generic import DetailView
+from django.http import JsonResponse
+
+from elasticsearch_dsl.query import Q
+
 from companies.models import Company, Revision
-from collections import OrderedDict, defaultdict, Counter
+from companies.elastic_models import Company as ElasticCompany
+from collections import OrderedDict, defaultdict
 
 
 class RevisionDetail(DetailView):
@@ -169,3 +175,61 @@ class CompanyDetail(DetailView):
         })
 
         return context
+
+
+class SuggestView(View):
+    def get(self, request):
+        q = request.GET.get('q', '').strip()
+
+        suggestions = []
+        dedup = set()
+
+        s = ElasticCompany.search().source(
+            ['names_autocomplete']
+        ).highlight('names_autocomplete').highlight_options(
+            order='score', fragment_size=500,
+            number_of_fragments=100,
+            pre_tags=['<strong>'],
+            post_tags=["</strong>"]
+        )
+
+        s = s.query(
+            "bool",
+            must=[
+                Q(
+                    "match",
+                    names_autocomplete={
+                        "query": q,
+                        "operator": "and"
+                    }
+                )
+            ],
+            should=[
+                Q(
+                    "match_phrase",
+                    names_autocomplete={
+                        "query": q,
+                        "boost": 2
+                    },
+                ),
+                Q(
+                    "span_first",
+                    match=Q(
+                        "span_term",
+                        names_autocomplete=q
+                    ),
+                    end=4,
+                    boost=2
+                )
+            ]
+        )[:20]
+
+        res = s.execute()
+        for r in res:
+            if "names_autocomplete" in r.meta.highlight:
+                for candidate in r.meta.highlight["names_autocomplete"]:
+                    if candidate.lower() not in dedup:
+                        suggestions.append(candidate)
+                        dedup.add(candidate.lower())
+
+        return JsonResponse(suggestions, safe=False)

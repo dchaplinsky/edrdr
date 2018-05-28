@@ -5,9 +5,10 @@ from django.urls import reverse
 from django.forms.models import model_to_dict
 
 from tokenize_uk import tokenize_words
+from translitua import translit, UkrainianKMU
 
 from companies.exceptions import StatusDoesntExist
-from companies.tools.names import TRANSLITERATOR, parse_fullname
+from companies.tools.names import TRANSLITERATOR, parse_fullname, title
 
 
 class Revision(models.Model):
@@ -36,6 +37,7 @@ class Company(models.Model):
         addresses = set()
         persons = set()
         all_persons = set()
+        names_autocomplete = set()
         companies = set()
         company_profiles = set()
         raw_records = set()
@@ -72,6 +74,9 @@ class Company(models.Model):
                 raw_records.add(person.raw_record)
 
         for name, position in persons:
+            names_autocomplete.add(title(name))
+            names_autocomplete.add(translit(title(name), UkrainianKMU))
+
             all_persons.add("{}, {}".format(name, position))
 
             l, f, p, _ = parse_fullname(name)
@@ -86,6 +91,7 @@ class Company(models.Model):
             "company_profiles": list(filter(None, company_profiles)),
             "latest_record": latest_record.to_dict(),
             "raw_records": list(filter(None, raw_records)),
+            "names_autocomplete": list(filter(None, names_autocomplete)),
         }
 
     class Meta:

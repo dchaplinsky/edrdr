@@ -1,11 +1,11 @@
 from django.core.management.base import BaseCommand
 
-from elasticsearch.helpers import streaming_bulk
+from elasticsearch.helpers import parallel_bulk
 from elasticsearch_dsl.connections import connections
 from tqdm import tqdm
 
 from companies.models import Company
-from companies.elastic_models import Company as ElasticCompany
+from companies.elastic_models import Company as ElasticCompany, companies_idx
 
 
 class Command(BaseCommand):
@@ -19,7 +19,7 @@ class Command(BaseCommand):
         )
 
     def bulk_write(self, conn, docs_to_index):
-        for response in streaming_bulk(
+        for response in parallel_bulk(
                 conn, (d.to_dict(True) for d in docs_to_index)):
             pass
 
@@ -27,7 +27,10 @@ class Command(BaseCommand):
         conn = connections.get_connection('default')
 
         if options["drop_indices"]:
+            companies_idx.delete(ignore=404)
+            companies_idx.create()
             ElasticCompany.init()
+
             conn.indices.put_settings(
                 index=ElasticCompany._doc_type.index,
                 body={
