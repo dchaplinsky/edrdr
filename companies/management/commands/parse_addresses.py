@@ -80,7 +80,7 @@ class Command(BaseCommand):
         if options["parse_all"]:
             qs = CompanyRecord.objects.all()
         else:
-            qs = CompanyRecord.objects.select_related("ompany").filter(
+            qs = CompanyRecord.objects.select_related("company").filter(
                 company__is_dirty=True
             )
 
