@@ -54,6 +54,12 @@ class Company(models.Model):
 
             company_profiles.add(company_record.company_profile)
             companies.add(company_record.name)
+
+            names_autocomplete.add(company_record.name)
+            names_autocomplete.add(company_record.short_name)
+            names_autocomplete.add(self.full_edrpou)
+            names_autocomplete.add(str(self.pk))
+
             companies.add(company_record.short_name)
             if max(company_record.revisions) > latest_revision:
                 latest_record = company_record
