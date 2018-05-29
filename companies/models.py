@@ -25,6 +25,8 @@ class Revision(models.Model):
 
 class Company(models.Model):
     edrpou = models.IntegerField(primary_key=True)
+    is_dirty = models.BooleanField(
+        "Потребує повторної індексації", db_index=True, default=True)
 
     @property
     def full_edrpou(self):
@@ -47,7 +49,8 @@ class Company(models.Model):
 
         latest_record = None
         latest_revision = 0
-        for company_record in self.records.all():
+        for company_record in self.records.all().exclude(
+                "company_hash", "location_parsing_quality"):
             addresses.add(company_record.location)
             addresses.add(company_record.parsed_location)
             addresses.add(company_record.validated_location)
@@ -65,7 +68,8 @@ class Company(models.Model):
                 latest_record = company_record
                 latest_revision = max(company_record.revisions)
 
-        for person in self.persons.all():
+        for person in self.persons.all().exclude(
+                "tokenized_record", "share", "revisions"):
             for name in person.name:
                 persons.add(
                     (name, person.get_person_type_display())

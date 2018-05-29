@@ -81,7 +81,9 @@ class Command(BaseCommand):
         if options["parse_all"]:
             qs = CompanyRecord.objects.all()
         else:
-            qs = CompanyRecord.objects.filter(location_street_address="")
+            qs = CompanyRecord.objects.select_related("Company").filter(
+                company__is_dirty=True
+            )
 
         with tqdm(total=num) as pbar:
             for company_rec in qs.only(

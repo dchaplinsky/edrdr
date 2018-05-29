@@ -8,7 +8,7 @@ import shutil
 import os.path
 import logging
 import xml.etree.ElementTree as ET
-
+from itertools import islice
 from time import sleep
 from hashlib import sha1
 from csv import DictReader
@@ -53,6 +53,10 @@ def whitelist(dct, fields):
         k: v for k, v in dct.items() if k in fields
     }
 
+
+def chunkify(it, size):
+    it = iter(it)
+    return iter(lambda: tuple(islice(it, size)), ())
 
 # requests_cache.install_cache('proxied_edr_cache')
 
@@ -404,6 +408,9 @@ class Command(BaseCommand):
             # Accumulator for the company records to create in bulk
             company_records_to_create = []
 
+            # Companies to mark for parsing/reindexing
+            dirty_companies = set()
+
             # Accumulator for the persons to create in bulk
             persons_to_create = []
             with tqdm() as pbar:
@@ -430,6 +437,7 @@ class Command(BaseCommand):
                                 revisions=[revision.pk],
                             )
                             persons_to_create.append(person)
+                            dirty_companies.add(company_line["edrpou"])
                             persons_in_bd.add(head_hash)
                         else:
                             if head_hash not in persons_with_no_revision:
@@ -462,6 +470,7 @@ class Command(BaseCommand):
                                             revisions=[revision.pk],
                                         )
                                         persons_to_create.append(person)
+                                        dirty_companies.add(company_line["edrpou"])
                                         persons_in_bd.add(bo_hash)
                                     else:
                                         if bo_hash not in persons_with_no_revision:
@@ -496,6 +505,7 @@ class Command(BaseCommand):
                     # If company is not in db yet, let's add it to the accum
                     if company_line["edrpou"] not in companies_in_bd:
                         companies_to_create.append(Company(edrpou=company_line["edrpou"]))
+                        dirty_companies.add(company_line["edrpou"])
                         companies_in_bd.add(company_line["edrpou"])
 
                     # Checking if such company record is already present in db
@@ -514,6 +524,7 @@ class Command(BaseCommand):
 
                         # Adding that company into accum
                         company_records_to_create.append(company_record)
+                        dirty_companies.add(company_line["edrpou"])
                         # Ignoring that company record hash for the current revision
                         company_records_in_bd.add(company_record_hash)
                     else:
@@ -581,6 +592,13 @@ class Command(BaseCommand):
                         "WHERE person_hash IN (" + hashes_str + ")",
                         [int(revision.pk)]
                     )
+
+            if dirty_companies:
+                for update_me in chunkify(dirty_companies, 10000):
+                    logger.debug(
+                        "Updating {} records in db as diry".format(len(update_me))
+                    )
+                    Company.objects.filter(pk__in=update_me).update(is_dirty=True)
 
             revision.imported = True
             revision.save()
