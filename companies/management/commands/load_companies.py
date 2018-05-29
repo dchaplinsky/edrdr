@@ -14,6 +14,7 @@ from hashlib import sha1
 from csv import DictReader
 from zipfile import ZipFile
 from io import TextIOWrapper
+from random import randrange
 
 from django.conf import settings
 from django.db import connection
@@ -656,7 +657,7 @@ class Command(BaseCommand):
         for guid in tqdm(guids):
             dataset_info = requests.get(
                 "http://data.gov.ua/view-dataset/dataset.json",
-                {"dataset-id": guid},
+                {"dataset-id": guid, "cachebuster": randrange(10)},
                 proxies=proxies
             ).json()
 
