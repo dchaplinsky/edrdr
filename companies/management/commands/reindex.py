@@ -37,10 +37,13 @@ class Command(BaseCommand):
                     'index.max_result_window': 20000000
                 }
             )
+            qs = Company.objects.all()
+        else:
+            qs = Company.objects.filter(is_dirty=True)
 
         docs_to_index = []
         with tqdm() as pbar:
-            for p in Company.objects.all().prefetch_related("persons", "records").iterator():
+            for p in qs.iterator():
                 pbar.update(1)
                 docs_to_index.append(ElasticCompany(**p.to_dict()))
                 if len(docs_to_index) > 1000:
@@ -48,3 +51,4 @@ class Command(BaseCommand):
                     docs_to_index = []
 
         self.bulk_write(conn, docs_to_index)
+        qs.update(is_dirty=False)
