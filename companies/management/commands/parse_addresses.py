@@ -74,18 +74,17 @@ class Command(BaseCommand):
                 r.save()
 
     def handle(self, *args, **options):
-        num = CompanyRecord.objects.count()
         rec_buffer = []
         my_tiny_pool = Pool(settings.NUM_THREADS)
 
         if options["parse_all"]:
             qs = CompanyRecord.objects.all()
         else:
-            qs = CompanyRecord.objects.select_related("Company").filter(
+            qs = CompanyRecord.objects.select_related("ompany").filter(
                 company__is_dirty=True
             )
 
-        with tqdm(total=num) as pbar:
+        with tqdm(total=qs.count()) as pbar:
             for company_rec in qs.only(
                     "location", "location_postal_code", "location_region", "location_district",
                     "location_locality", "location_street_address", "location_apartment",

@@ -42,7 +42,7 @@ class Command(BaseCommand):
             qs = Company.objects.filter(is_dirty=True)
 
         docs_to_index = []
-        with tqdm() as pbar:
+        with tqdm(total=qs.count()) as pbar:
             for p in qs.iterator():
                 pbar.update(1)
                 docs_to_index.append(ElasticCompany(**p.to_dict()))
