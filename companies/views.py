@@ -1,6 +1,7 @@
 from django.views import View
 from django.views.generic import DetailView
 from django.http import JsonResponse
+from django.template.loader import render_to_string
 
 from elasticsearch_dsl.query import Q
 
@@ -181,11 +182,11 @@ class SuggestView(View):
     def get(self, request):
         q = request.GET.get('q', '').strip()
 
-        suggestions = []
-        dedup = set()
+        suggestions = defaultdict(list)
+        order_of_suggest = []
 
         s = ElasticCompany.search().source(
-            ['names_autocomplete']
+            ['names_autocomplete', "latest_record", "full_edrpou", "companies"]
         ).highlight('names_autocomplete').highlight_options(
             order='score', fragment_size=500,
             number_of_fragments=100,
@@ -228,8 +229,15 @@ class SuggestView(View):
         for r in res:
             if "names_autocomplete" in r.meta.highlight:
                 for candidate in r.meta.highlight["names_autocomplete"]:
-                    if candidate.lower() not in dedup:
-                        suggestions.append(candidate)
-                        dedup.add(candidate.lower())
+                    suggestions[candidate.lower()].append((candidate, r))
+                    if candidate.lower() not in order_of_suggest:
+                        order_of_suggest.append(candidate.lower())
 
-        return JsonResponse(suggestions, safe=False)
+        rendered_result = [
+            render_to_string("companies/autocomplete.html", {
+                "suggestion": suggestions[k]
+            })
+            for k in order_of_suggest
+        ]
+
+        return JsonResponse(rendered_result, safe=False)
