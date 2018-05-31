@@ -49,7 +49,7 @@ class Company(models.Model):
 
         latest_record = None
         latest_revision = 0
-        for company_record in self.records.all().exclude(
+        for company_record in self.records.all().defer(
                 "company_hash", "location_parsing_quality"):
             addresses.add(company_record.location)
             addresses.add(company_record.parsed_location)
@@ -68,7 +68,7 @@ class Company(models.Model):
                 latest_record = company_record
                 latest_revision = max(company_record.revisions)
 
-        for person in self.persons.all().exclude(
+        for person in self.persons.all().defer(
                 "tokenized_record", "share", "revisions"):
             for name in person.name:
                 persons.add(
