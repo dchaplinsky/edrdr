@@ -1,3 +1,6 @@
+import re
+from collections import OrderedDict, defaultdict
+
 from django.views import View
 from django.views.generic import DetailView, TemplateView
 from django.http import JsonResponse
@@ -7,7 +10,7 @@ from elasticsearch_dsl.query import Q
 
 from companies.models import Company, Revision, Person
 from companies.elastic_models import Company as ElasticCompany
-from collections import OrderedDict, defaultdict
+from companies.tools.paginator import paginated
 
 
 class RevisionDetail(DetailView):
@@ -256,3 +259,85 @@ class HomeView(TemplateView):
         })
 
         return context
+
+
+class SearchView(TemplateView):
+    template_name = "companies/search.html"
+
+    def get(self, request, *args, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        query = request.GET.get("q", "")
+        search_type = request.GET.get("search_type", "strict")
+        if search_type not in ["strict", "loose", "fuzzy"]:
+            search_type = "strict"
+
+        if query:
+            nwords = len(re.findall(r'\w{4,}', query))
+
+            if nwords >= 3:
+                should_match = (nwords - int(nwords > 6) - 1) / nwords * 100
+            else:
+                should_match = 100
+
+            strict_query = ElasticCompany.search().query(
+                "match",
+                _all={
+                    "query": query,
+                    "operator": "and"
+                }
+            )
+
+            loose_query = ElasticCompany.search().query(
+                # "match",
+                # _all={
+                #     "query": query,
+                #     "operator": "or",
+                #     # "minimum_should_match": "{:.2f}%".format(should_match),
+                # }
+                "multi_match",
+                query=query,
+                operator="or",
+                type="cross_fields",
+                minimum_should_match="{:.2f}%".format(should_match),
+                fields=["_all"]
+            )
+
+            fuzzy_query = ElasticCompany.search().query(
+                "fuzzy",
+                _all={
+                    "value": query
+                }
+            )
+
+            if search_type == "fuzzy":
+                base_qs = fuzzy_query
+            elif search_type == "loose":
+                base_qs = loose_query
+            else:
+                base_qs = strict_query
+
+            qs = base_qs
+        else:
+            qs = ElasticCompany.search().query('match_all')
+
+        # results = qs.highlight_options(
+        #     order='score',
+        #     pre_tags=['<u class="match">'],
+        #     post_tags=["</u>"]
+        # ).highlight(
+        #     "persons",
+        #     fragment_size=500,
+        #     number_of_fragments=100
+        # )
+        results = qs
+
+        context.update({
+            "search_results": paginated(request, results),
+            "query": query,
+            "strict_count": strict_query.count(),
+            "loose_count": 0, # loose_query.count(),
+            "fuzzy_count": 0, # fuzzy_query.count()
+        })
+
+        return self.render_to_response(context)

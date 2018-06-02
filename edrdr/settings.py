@@ -213,6 +213,7 @@ PROXY = None
 
 NUM_THREADS = 4
 PATH_TO_SECRET_SAUCE = ""
+CATALOG_PER_PAGE = 24
 
 # Setup Elasticsearch default connection
 ELASTICSEARCH_CONNECTIONS = {

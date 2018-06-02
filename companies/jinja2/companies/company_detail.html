@@ -7,7 +7,8 @@
 {% endblock %}
 
 {% macro render_person(person, show_person_type=True) %}
-    <a href="" target="_blank" class="search-for">{{ person.name|join(", ")|title }}</a>{% if show_person_type %}, {{ person.get_person_type_display() }} {% endif %}<br/>
+    {% set person_name = person.name|join(", ")|title %}
+    <a href="{{ url('search>results') }}?q={{ person_name|urlencode }}" target="_blank" class="search-for">{{ person_name }}</a>{% if show_person_type %}, {{ person.get_person_type_display() }} {% endif %}<br/>
     {% if person.address %}{{ person.address|join("<br/>")|safe }} <br/>{% endif %}
     {% if person.country %}{{ person.country|join("<br/>")|safe }} <br/>{% endif %}
     {% if person.person_type != "head" %}

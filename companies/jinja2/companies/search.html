@@ -1,0 +1,98 @@
+{% extends "companies/base.html" %}
+
+{% block container_class %}sidebar-o side-scroll main-content-narrow page-header-fixed page-header-inverse{% endblock %}
+
+{% block content %}
+    <div class="content">
+        <!-- Search -->
+        <form class="push col-sm-6 ml-auto mr-auto" action="{{ url('search>results') }}" method="get" _lpchecked="1">
+            <div class="input-group input-group-lg">
+                <input type="text" class="form-control search-form-q" name="q" data-provide="typeahead" id="search-form" placeholder="{{ _("Пошук") }}" data-endpoint="{{ url("search>suggest") }}" value="{{ query }}">
+                <div class="input-group-append">
+                    <button type="submit" class="btn btn-secondary">
+                        <i class="fa fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </form>
+        <!-- END Search -->
+
+        <!-- Results -->
+        <!-- Images Filtering -->
+        <h2 class="content-heading">Результати <small>пошуку за фразою </small>'{{ query }}'</h2>
+
+        <!-- Content Filtering (.js-filter class is initialized in Edrdr() -> uiHelperContentFilter()) -->
+        <!-- If data-numbers="true" is added, then the number of the items of each category will be auto added to each category link -->
+        <div class="js-filter" data-numbers="true">
+            <div class="p-10 bg-white push">
+                <ul class="nav nav-pills">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" data-category-link="all">{{ _("Повне співпадіння") }} ({{ strict_count }})</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-category-link="ghata">{{ _("Неповне співпадіння") }} ({{ loose_count }})</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-category-link="posipaks">{{ _("Нечітке співпадіння") }} ({{ fuzzy_count }})</a>
+                    </li>
+                </ul>
+            </div>
+            <div class="row items-push">
+                {% for res in search_results %}
+                <div class="small-profile col-lg-4" itemscope="" itemtype="http://schema.org/Person" data-category="decl">
+                    <div class="box active-box">
+                        <header class="profile-header">
+                            <a href="{{ url("company>detail", args=[res.full_edrpou]) }}">
+                                <div class="not-avatar">{{ res.full_edrpou }}</div>
+                                <h3 class="name" itemprop="name">{{ res.latest_record.short_name or res.latest_record.name }}</h3>
+                            </a>
+                        </header>
+                        <div class="descr">{{ res.latest_record.status }}
+                        </div>
+                        <div data-toggle="popover"
+                             title="" data-placement="top"
+                             data-content="" data-original-title="Тут якісь деталі">Детальніше</div>
+                        <hr>
+                        <footer>
+                            {{ res.latest_record.location }}
+                        </footer>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <nav aria-label="Page navigation">
+            <ul class="pagination pagination-lg">
+                <li class="page-item">
+                    <a class="page-link" href="javascript:void(0)" aria-label="Previous">
+                                        <span aria-hidden="true">
+                                            <i class="fa fa-angle-left"></i>
+                                        </span>
+                        <span class="sr-only">Previous</span>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="javascript:void(0)">1</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="javascript:void(0)">2</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="javascript:void(0)">3</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="javascript:void(0)" aria-label="Next">
+                                        <span aria-hidden="true">
+                                            <i class="fa fa-angle-right"></i>
+                                        </span>
+                        <span class="sr-only">Next</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        <!-- END Images Filtering --
+        <!-- END Results -->
+    </div>
+{% endblock %}
+
