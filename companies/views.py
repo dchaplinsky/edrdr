@@ -320,6 +320,9 @@ class SearchView(TemplateView):
             qs = base_qs
         else:
             qs = ElasticCompany.search().query('match_all')
+            strict_query = qs
+            fuzzy_query = qs
+            loose_query = qs
 
         # results = qs.highlight_options(
         #     order='score',
