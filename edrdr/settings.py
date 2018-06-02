@@ -27,6 +27,7 @@ DEBUG = False
 
 ALLOWED_HOSTS = []
 LANGUAGE_CODE = 'uk'
+STATIC_ROOT = os.path.join(BASE_DIR, "static")
 
 # Application definition
 
@@ -37,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'pipeline',
 
     'companies',
 ]
@@ -78,6 +80,11 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
+            "extensions": [
+                'pipeline.jinja2.PipelineExtension',
+                'jinja2.ext.i18n',
+                'jinja2.ext.with_'
+            ],
         },
     },
     {
@@ -94,6 +101,39 @@ TEMPLATES = [
         },
     },
 ]
+
+PIPELINE = {
+    'CSS_COMPRESSOR': 'pipeline.compressors.cssmin.CssminCompressor',
+    'JS_COMPRESSOR': 'pipeline.compressors.uglifyjs.UglifyJSCompressor',
+    'STYLESHEETS': {
+        'css_all': {
+            'source_filenames': (
+                'css/screen.css',
+            ),
+            'output_filename': 'css/merged.css',
+            'extra_context': {},
+        }
+    },
+    'JAVASCRIPT': {
+        'js_all': {
+            'source_filenames': (
+                "js/core/jquery.min.js",
+                "js/core/bootstrap.bundle.min.js",
+                "js/core/jquery.slimscroll.min.js",
+                "js/core/jquery.scrollLock.min.js",
+                "js/core/jquery.appear.min.js",
+                "js/core/jquery.countTo.min.js",
+                "js/core/js.cookie.min.js",
+                "js/core/bootstrap3-typeahead.js",
+                "js/bihus.js",
+                "js/main.js",
+                "js/common.js",
+                "js/autocomplete.js",
+            ),
+            'output_filename': 'js/merged.js',
+        }
+    }
+}
 
 
 WSGI_APPLICATION = 'edrdr.wsgi.application'

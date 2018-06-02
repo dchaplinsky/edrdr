@@ -6,5 +6,5 @@
 {%- endif %}
 </span>
 {% else %}
-<span>{{ sugg_text|safe }}</span><span class="autocomplete-hint pull-right">{{ suggestion|length }} компаній</span>
+<span>{{ sugg_text|safe }}</span><span class="autocomplete-hint pull-right">{{ suggestion|length }} {{ suggestion|length|uk_plural(_("компанія"), _("компанії"), _("компаній")) }}</span>
 {% endif %}

@@ -1,11 +1,11 @@
 from django.views import View
-from django.views.generic import DetailView
+from django.views.generic import DetailView, TemplateView
 from django.http import JsonResponse
 from django.template.loader import render_to_string
 
 from elasticsearch_dsl.query import Q
 
-from companies.models import Company, Revision
+from companies.models import Company, Revision, Person
 from companies.elastic_models import Company as ElasticCompany
 from collections import OrderedDict, defaultdict
 
@@ -241,3 +241,18 @@ class SuggestView(View):
         ]
 
         return JsonResponse(rendered_result, safe=False)
+
+
+class HomeView(TemplateView):
+    template_name = "companies/home.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        context.update({
+            "num_of_companies": Company.objects.count(),
+            "num_of_persons": Person.objects.count(),
+            "num_of_beneficiaries": Person.objects.filter(person_type="owner").count()
+        })
+
+        return context

@@ -7,8 +7,8 @@ TRANSLITERATOR = Transliterator()
 
 def title(s):
     chunks = s.split()
-    chunks = map(lambda x: capwords(x, u"-"), chunks)
-    return u" ".join(chunks)
+    chunks = map(lambda x: capwords(x, "-"), chunks)
+    return " ".join(chunks)
 
 
 def parse_fullname(person_name):

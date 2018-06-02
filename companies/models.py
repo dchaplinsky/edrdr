@@ -217,7 +217,7 @@ class Person(models.Model):
 
     company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name="Компанія",
                                 related_name="persons")
-    person_type = models.CharField(max_length=10, choices=PERSON_TYPES.items())
+    person_type = models.CharField(max_length=10, choices=PERSON_TYPES.items(), db_index=True)
     address = ArrayField(models.TextField(), default=[], verbose_name="Адреси")
     country = ArrayField(models.TextField(), default=[], verbose_name="Країни")
     raw_record = models.TextField(blank=True, verbose_name="Оригінал запису")
