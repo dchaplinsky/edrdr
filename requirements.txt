@@ -14,3 +14,4 @@ Js2Py==0.59
 python-Levenshtein==0.12.0
 names-translator==1.0.2
 django-pipeline==1.6.14
+django-cacheops==4.0.6

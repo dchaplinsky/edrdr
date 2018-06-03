@@ -39,31 +39,20 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'pipeline',
-
+    'cacheops',
     'companies',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
-if DEBUG:
-    INSTALLED_APPS += [
-        'debug_toolbar',
-    ]
-
-    MIDDLEWARE += [
-        'debug_toolbar.middleware.DebugToolbarMiddleware',
-    ]
-
-    INTERNAL_IPS = ["127.0.0.1"]
-
 
 ROOT_URLCONF = 'edrdr.urls'
 
@@ -232,3 +221,14 @@ except ImportError:
 # # Init Elasticsearch connections
 from elasticsearch_dsl import connections
 connections.connections.configure(**ELASTICSEARCH_CONNECTIONS)
+
+if DEBUG:
+    INSTALLED_APPS += [
+        'debug_toolbar',
+    ]
+
+    MIDDLEWARE += [
+        'debug_toolbar.middleware.DebugToolbarMiddleware',
+    ]
+
+    INTERNAL_IPS = ["127.0.0.1"]

@@ -5,6 +5,7 @@ from django.views import View
 from django.views.generic import DetailView, TemplateView
 from django.http import JsonResponse
 from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 
 from elasticsearch_dsl.query import Q
 
@@ -226,7 +227,7 @@ class SuggestView(View):
                     boost=2
                 )
             ]
-        )[:20]
+        )[:200]
 
         res = s.execute()
         for r in res:
@@ -240,7 +241,7 @@ class SuggestView(View):
             render_to_string("companies/autocomplete.html", {
                 "suggestion": suggestions[k]
             })
-            for k in order_of_suggest
+            for k in order_of_suggest[:20]
         ]
 
         return JsonResponse(rendered_result, safe=False)

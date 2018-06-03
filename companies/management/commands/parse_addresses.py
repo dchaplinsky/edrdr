@@ -91,7 +91,7 @@ class Command(BaseCommand):
                     "location_parsing_quality", "validated_location_postal_code",
                     "validated_location_region", "validated_location_district",
                     "validated_location_locality", "validated_location_street_address",
-                    "validated_location_apartment").iterator():
+                    "validated_location_apartment").nocache().iterator():
                 pbar.update(1)
 
                 rec_buffer.append(company_rec)

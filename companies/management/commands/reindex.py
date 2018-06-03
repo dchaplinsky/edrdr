@@ -43,7 +43,7 @@ class Command(BaseCommand):
 
         docs_to_index = []
         with tqdm(total=qs.count()) as pbar:
-            for p in qs.iterator():
+            for p in qs.nocache().iterator():
                 pbar.update(1)
                 docs_to_index.append(ElasticCompany(**p.to_dict()))
                 if len(docs_to_index) > 1000:

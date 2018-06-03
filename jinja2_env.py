@@ -9,6 +9,17 @@ from companies.tools.names import title
 from companies.tools.formaters import ukr_plural, curformat
 
 
+def updated_querystring(request, params):
+    """Updates current querystring with a given dict of params, removing
+    existing occurrences of such params. Returns a urlencoded querystring."""
+    original_params = request.GET.copy()
+    for key in params:
+        if key in original_params:
+            original_params.pop(key)
+    original_params.update(params)
+    return original_params.urlencode()
+
+
 def environment(**options):
     env = Environment(**options)
     env.globals.update({
@@ -23,6 +34,10 @@ def environment(**options):
         'datetime': lambda dt: formats.date_format(dt, "DATETIME_FORMAT"),
         'title': title,
         'uk_plural': ukr_plural,
-        'curformat': curformat
+        'curformat': curformat,
     })
+    env.globals.update({
+        'updated_querystring': updated_querystring
+    })
+
     return env
