@@ -25,6 +25,7 @@ class Revision(models.Model):
 
 class Company(models.Model):
     edrpou = models.IntegerField(primary_key=True)
+    last_modified = models.DateTimeField(auto_now=True)
     is_dirty = models.BooleanField(
         "Потребує повторної індексації", db_index=True, default=True)
 

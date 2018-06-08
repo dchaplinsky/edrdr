@@ -7,7 +7,7 @@ from elasticsearch_dsl import (
 from elasticsearch_dsl.query import Q
 
 ADDRESSES_INDEX = 'addresses'
-COMPANIES_INDEX = 'edrdr_companies'
+COMPANIES_INDEX = 'edrdr_companies_hl'
 
 
 class Address(DocType):
@@ -225,12 +225,12 @@ class Company(DocType):
     """Company document."""
 
     full_edrpou = Keyword(index=True, copy_to="all")
-    addresses = Text(analyzer='ukrainian')
-    persons = Text(analyzer='ukrainian')
-    companies = Text(analyzer='ukrainian')
+    addresses = Text(analyzer='ukrainian', fields={"raw": Text()})
+    persons = Text(analyzer='ukrainian', fields={"raw": Text()})
+    companies = Text(analyzer='ukrainian', fields={"raw": Text()})
     company_profiles = Keyword(index=True, copy_to="all")
     latest_record = Object()
-    raw_records = Text(analyzer='ukrainian')
+    raw_records = Text(analyzer='ukrainian', fields={"raw": Text()})
     names_autocomplete = Text(
         analyzer='namesAutocompleteAnalyzer',
         search_analyzer="namesAutocompleteSearchAnalyzer"

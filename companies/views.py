@@ -5,7 +5,6 @@ from django.views import View
 from django.views.generic import DetailView, TemplateView
 from django.http import JsonResponse
 from django.template.loader import render_to_string
-from django.utils.html import strip_tags
 
 from elasticsearch_dsl.query import Q
 
@@ -274,49 +273,51 @@ class SearchView(TemplateView):
             search_type = "strict"
 
         if query:
-            nwords = len(re.findall(r'\w{4,}', query))
+            nwords = len(re.findall(r'\w{3,}', query))
 
-            if nwords >= 3:
-                should_match = (nwords - int(nwords > 6) - 1) / nwords * 100
+            if nwords > 3:
+                should_match = str(nwords - int(nwords > 6) - 1)
             else:
-                should_match = 100
+                should_match = "100%"
 
             strict_query = ElasticCompany.search().query(
-                "match",
+                "match_phrase",
                 _all={
-                    "query": query,
-                    "operator": "and"
+                    "query": query
                 }
             )
 
             loose_query = ElasticCompany.search().query(
-                # "match",
-                # _all={
-                #     "query": query,
-                #     "operator": "or",
-                #     # "minimum_should_match": "{:.2f}%".format(should_match),
-                # }
-                "multi_match",
-                query=query,
-                operator="or",
-                type="cross_fields",
-                minimum_should_match="{:.2f}%".format(should_match),
-                fields=["_all"]
-            )
-
-            fuzzy_query = ElasticCompany.search().query(
-                "fuzzy",
+                "match",
                 _all={
-                    "value": query
+                    "query": query,
+                    "operator": "or",
+                    "minimum_should_match": should_match,
                 }
             )
 
+            fuzzy_query = ElasticCompany.search().query(
+                "match",
+                persons={
+                    "query": query,
+                    "operator": "and",
+                    "fuzziness": "auto"
+                }
+            )
+
+            strict_count = strict_query.count()
+            loose_count = loose_query.count()
+            fuzzy_count = fuzzy_query.count()
+
             if search_type == "fuzzy":
                 base_qs = fuzzy_query
+                base_count = fuzzy_count
             elif search_type == "loose":
                 base_qs = loose_query
+                base_count = loose_count
             else:
                 base_qs = strict_query
+                base_count = strict_count
 
             qs = base_qs
         else:
@@ -325,23 +326,27 @@ class SearchView(TemplateView):
             fuzzy_query = qs
             loose_query = qs
 
-        # results = qs.highlight_options(
-        #     order='score',
-        #     pre_tags=['<u class="match">'],
-        #     post_tags=["</u>"]
-        # ).highlight(
-        #     "persons",
-        #     fragment_size=500,
-        #     number_of_fragments=100
-        # )
-        results = qs
+            base_count = fuzzy_count = loose_count = strict_count = qs.count()
+
+        results = qs.highlight_options(
+            order='score',
+            pre_tags=['<u class="match">'],
+            post_tags=["</u>"]
+        ).highlight(
+            "*.raw",
+            require_field_match=False,
+            fragment_size=100,
+            number_of_fragments=5
+        )
 
         context.update({
             "search_results": paginated(request, results),
             "query": query,
-            "strict_count": strict_query.count(),
-            "loose_count": 0, # loose_query.count(),
-            "fuzzy_count": 0, # fuzzy_query.count()
+            "search_type": search_type,
+            "strict_count": strict_count,
+            "loose_count": loose_count,
+            "fuzzy_count": fuzzy_count,
+            "base_count": base_count,
         })
 
         return self.render_to_response(context)

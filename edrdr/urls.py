@@ -2,12 +2,16 @@ from django.conf.urls import include, url
 from django.conf import settings
 from django.urls import path
 from django.contrib import admin
+from django.contrib.sitemaps import views as sitemaps_views
 from django.views.generic import TemplateView
 from django.conf.urls.i18n import i18n_patterns
+from django.views.decorators.cache import cache_page
 
 from companies.views import (
     CompanyDetail, RevisionDetail, SuggestView, HomeView, SearchView
 )
+
+from companies.sitemaps import sitemaps
 
 
 urlpatterns = i18n_patterns(
@@ -19,6 +23,14 @@ urlpatterns = i18n_patterns(
 ) + [
     path('about', TemplateView.as_view(template_name="companies/about.html"),
          name="about"),
+
+    path('sitemap.xml',
+         cache_page(86400)(sitemaps_views.index),
+         {'sitemaps': sitemaps, 'sitemap_url_name': 'sitemaps'}),
+    path('sitemap-<section>.xml',
+         cache_page(86400)(sitemaps_views.sitemap),
+         {'sitemaps': sitemaps}, name='sitemaps'),
+
     url(r'^admin/', admin.site.urls)
 ]
 

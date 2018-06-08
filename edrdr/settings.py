@@ -27,6 +27,7 @@ DEBUG = False
 
 ALLOWED_HOSTS = []
 LANGUAGE_CODE = 'uk'
+SITE_ID = 1
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
 
 # Application definition
@@ -37,6 +38,9 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'django.contrib.sitemaps',
+    'django.contrib.sites',
+    'qartez',
     'django.contrib.staticfiles',
     'pipeline',
     'cacheops',

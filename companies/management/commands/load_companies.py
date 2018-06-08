@@ -18,6 +18,7 @@ from random import randrange
 
 from django.conf import settings
 from django.db import connection
+from django.utils import timezone
 from django.core.management.base import BaseCommand
 
 from tqdm import tqdm
@@ -599,7 +600,9 @@ class Command(BaseCommand):
                     logger.debug(
                         "Updating {} records in db as diry".format(len(update_me))
                     )
-                    Company.objects.filter(pk__in=update_me).update(is_dirty=True)
+                    Company.objects.filter(pk__in=update_me).update(
+                        is_dirty=True, last_modified=timezone.now()
+                    )
 
             revision.imported = True
             revision.save()
