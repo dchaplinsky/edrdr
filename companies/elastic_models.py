@@ -7,7 +7,7 @@ from elasticsearch_dsl import (
 from elasticsearch_dsl.query import Q
 
 ADDRESSES_INDEX = 'addresses'
-COMPANIES_INDEX = 'edrdr_companies_hl'
+COMPANIES_INDEX = 'edrdr_companies'
 
 
 class Address(DocType):
