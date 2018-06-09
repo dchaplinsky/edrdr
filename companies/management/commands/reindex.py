@@ -46,7 +46,7 @@ class Command(BaseCommand):
             for p in qs.nocache().iterator():
                 pbar.update(1)
                 docs_to_index.append(ElasticCompany(**p.to_dict()))
-                if len(docs_to_index) > 1000:
+                if len(docs_to_index) > 400:
                     self.bulk_write(conn, docs_to_index)
                     docs_to_index = []
 
