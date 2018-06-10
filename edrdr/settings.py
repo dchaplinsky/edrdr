@@ -41,7 +41,6 @@ INSTALLED_APPS = [
     'django.contrib.sitemaps',
     'django.contrib.sites',
     'qartez',
-    'django.contrib.staticfiles',
     'pipeline',
     'cacheops',
     'companies',
