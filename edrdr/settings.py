@@ -96,12 +96,14 @@ TEMPLATES = [
 ]
 
 PIPELINE = {
+    'COMPILERS': ('pipeline.compilers.sass.SASSCompiler',),
+    'SASS_ARGUMENTS': '-q',
     'CSS_COMPRESSOR': 'pipeline.compressors.cssmin.CssminCompressor',
     'JS_COMPRESSOR': 'pipeline.compressors.uglifyjs.UglifyJSCompressor',
     'STYLESHEETS': {
         'css_all': {
             'source_filenames': (
-                'css/screen.css',
+                'scss/main.scss',
             ),
             'output_filename': 'css/merged.css',
             'extra_context': {},
@@ -128,6 +130,7 @@ PIPELINE = {
     }
 }
 
+STATIC_URL = '/static/'
 
 WSGI_APPLICATION = 'edrdr.wsgi.application'
 
@@ -212,7 +215,7 @@ CATALOG_PER_PAGE = 24
 ELASTICSEARCH_CONNECTIONS = {
     'default': {
         'hosts': 'localhost',
-        'timeout': 20
+        'timeout': 120
     }
 }
 
