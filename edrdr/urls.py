@@ -36,6 +36,11 @@ urlpatterns = i18n_patterns(
 
 if settings.DEBUG:
     import debug_toolbar
+    from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+
     urlpatterns = [
         url(r'^__debug__/', include(debug_toolbar.urls)),
     ] + urlpatterns
+
+    urlpatterns += staticfiles_urlpatterns() # tell gunicorn where static files are in dev mode
+    urlpatterns += static(settings.MEDIA_URL + 'images/', document_root=os.path.join(settings.MEDIA_ROOT, 'images'))
