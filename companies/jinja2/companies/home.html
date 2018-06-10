@@ -8,19 +8,20 @@
 
 {% block content %}
     <!-- Hero -->
-    <div class="bg-image" style="background-image: url({{ static('img/photos/photo23@2x.jpg') }});">
+    <div class="bg-image" style="background-image: url({{ static('img/photos/index.jpg') }});">
+        <div id="particles-js"></div>
         <div class="hero bg-black-op">
             <div class="hero-inner">
                 <div class="content content-full text-center border-white-op-b">
                     <h1 class="display-3 font-w700 text-white mb-10 invisible" data-toggle="appear" data-class="animated fadeInDown">
                         <span class="svg-image inline-logo media-object">
                                 <svg preserveAspectRatio="xMidYMid" focusable="false">
-                                    <use xlink:href="{{ static('img/sprite.svg') }}#wh100"></use>
+                                    <use xlink:href="{{ static('img/sprite.svg') }}#logo"></use>
                                 </svg>
                             </span> EDR<span class="text-primary">DR</span>
                     </h1>
                     <h2 class="font-w400 text-white-op mb-50 invisible" data-toggle="appear" data-class="animated fadeInDown">Держреєстр чогось там видатного</h2>
-                    <form class="push col-sm-6 ml-auto mr-auto" action="{{ url('search>results') }}" method="get" _lpchecked="1">
+                    <form class="searchform push col-sm-6 ml-auto mr-auto" action="{{ url('search>results') }}" method="get" _lpchecked="1">
                         <div class="input-group input-group-lg">
                             <input type="text" class="form-control search-form-q" name="q" data-provide="typeahead" id="search-form" placeholder="{{ _("Пошук") }}" data-endpoint="{{ url("search>suggest") }}">
                             <div class="input-group-append">
@@ -29,7 +30,7 @@
                                 </button>
                             </div>
                         </div>
-                        <p>Наприклад: Рошен</p>
+                        <p>Наприклад: Рошен, Ромашко Роман Петрович, ПП "РОМДІРОМ", 37504544 </p>
                     </form>
                 </div>
                 <div class="js-countdown mb-20 col-md-6 ml-auto mr-auto">
@@ -59,9 +60,9 @@
     <!-- END Hero -->
 
     <!-- Feature: Powerful Layout -->
-    <div class="bg-white">
+    <div class="bg-white section-2">
         <div class="content">
-            <div class="pt-100 pb-50">
+            <div class="pb-50">
                 <h3 class="h1 font-w700 text-center mb-10">
                     EDRDR <span class="text-primary">Шо це?</span>
                 </h3>
@@ -133,12 +134,89 @@
                 </div>
             </div>
 
-            <p>Вже давно відомо, що читабельний зміст буде заважати зосередитись людині, яка оцінює композицію сторінки.
-                Сенс використання Lorem Ipsum полягає в тому, що цей текст має більш-менш нормальне розподілення літер на
-                відміну від, наприклад, "Тут іде текст. Тут іде текст." Це робить текст схожим на оповідний.
-                Багато програм верстування та веб-дизайну використовують Lorem Ipsum як зразок і пошук за терміном "lorem ipsum"
-                відкриє багато веб-сайтів, які знаходяться ще в зародковому стані. Різні версії Lorem Ipsum з'явились
-                за минулі роки, деякі випадково, деякі було створено зумисно (зокрема, жартівливі).</p>
+            <div class="wysiwyg-section">
+                <p>Вже давно відомо, що читабельний зміст буде заважати зосередитись людині, яка оцінює композицію сторінки.
+                    Сенс використання Lorem Ipsum полягає в тому, що цей текст має більш-менш нормальне розподілення літер на
+                    відміну від, наприклад, "Тут іде текст. Тут іде текст." Це робить текст схожим на оповідний.
+                    Багато програм верстування та веб-дизайну використовують Lorem Ipsum як зразок і пошук за терміном "lorem ipsum"
+                    відкриє багато веб-сайтів, які знаходяться ще в зародковому стані. Різні версії Lorem Ipsum з'явились
+                    за минулі роки, деякі випадково, деякі було створено зумисно (зокрема, жартівливі).</p>
+            </div>
+
         </div>
     </div>
+    <script src="http://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+      particlesJS("particles-js", {
+        "particles": {
+          "number": {
+            "value": 80,
+            "density": {"enable": true, "value_area": 800}
+          },
+          "color": {"value": "#ffffff"},
+          "shape": {
+            "type": "circle",
+            "stroke": {"width": 0, "color": "#000000"},
+            "polygon": {"nb_sides": 4},
+            "image": {"src": "img/github.svg", "width": 100, "height": 100}
+          },
+          "opacity": {
+            "value": 0.06413648243462092,
+            "random": false,
+            "anim": {"enable": false, "speed": 1, "opacity_min": 0.1, "sync": false}
+          },
+          "size": {
+            "value": 8.017060304327615,
+            "random": true,
+            "anim": {"enable": false, "speed": 40, "size_min": 0.1, "sync": false}
+          },
+          "line_linked": {
+            "enable": true,
+            "distance": 150,
+            "color": "#ffffff",
+            "opacity": 0.4,
+            "width": 1
+          },
+          "move": {
+            "enable": true,
+            "speed": 6,
+            "direction": "none",
+            "random": false,
+            "straight": false,
+            "out_mode": "out",
+            "bounce": false,
+            "attract": {"enable": false, "rotateX": 600, "rotateY": 1200}
+          }
+        },
+        "interactivity": {
+          "detect_on": "canvas",
+          "events": {
+            "onhover": {"enable": true, "mode": "bubble"},
+            "onclick": {"enable": true, "mode": "push"},
+            "resize": true
+          },
+          "modes": {
+            "grab": {"distance": 828.318756547372, "line_linked": {"opacity": 1}},
+            "bubble": {
+              "distance": 255.80432187492372,
+              "size": 8.120772123013452,
+              "duration": 2,
+              "opacity": 1,
+              "speed": 3
+            },
+            "repulse": {"distance": 105.57003759917487, "duration": 0.4},
+            "push": {"particles_nb": 4},
+            "remove": {"particles_nb": 2}
+          }
+        },
+        "retina_detect": true
+      });
+
+      var update;
+      update = function () {
+        requestAnimationFrame(update);
+      };
+      requestAnimationFrame(update);
+      ;
+    </script>
 {% endblock %}
