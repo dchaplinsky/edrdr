@@ -1,11 +1,12 @@
 {% extends "companies/base.html" %}
 
+{% block body_class %}page-search{% endblock %}
 {% block container_class %}sidebar-o side-scroll main-content-narrow page-header-fixed page-header-inverse{% endblock %}
 
 {% block content %}
     <div class="content">
         <!-- Search -->
-        <form class="push col-sm-6 ml-auto mr-auto" action="{{ url('search>results') }}" method="get" _lpchecked="1">
+        <form class="searchform push col-sm-6 ml-auto mr-auto" action="{{ url('search>results') }}" method="get" _lpchecked="1">
             <div class="input-group input-group-lg">
                 <input type="text" class="form-control search-form-q" name="q" data-provide="typeahead" id="search-form" placeholder="{{ _("Пошук") }}" data-endpoint="{{ url("search>suggest") }}" value="{{ query }}">
                 <div class="input-group-append">
@@ -43,7 +44,7 @@
                     <div class="box active-box">
                         <header class="profile-header">
                             <a href="{{ url("company>detail", args=[res.full_edrpou]) }}">
-                                <div class="not-avatar">{{ res.full_edrpou }}</div>
+                                <div class="edrpou">{{ res.full_edrpou }}</div>
                                 <h3 class="name" itemprop="name">{{ res.latest_record.short_name or res.latest_record.name }}</h3>
                             </a>
                         </header>
@@ -51,9 +52,9 @@
                             <br/>
                             {% for h_field in res.meta.highlight %}{% for content in res.meta.highlight[h_field] %}{{ content|safe }}<br/>{% endfor %}{% endfor %}
                         </div>
-                        <div data-toggle="popover"
+                        <!--<div data-toggle="popover"
                              title="" data-placement="top"
-                             data-content="" data-original-title="Тут якісь деталі">Детальніше</div>
+                             data-content="" data-original-title="Тут якісь деталі">Детальніше</div>-->
                         <hr>
                         <footer>
                             {{ res.latest_record.location }}
