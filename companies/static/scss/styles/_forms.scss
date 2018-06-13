@@ -129,6 +129,7 @@ textarea.form-control {
 
             span:first-child {
                 font-size: 15px;
+                max-width: 65%
             }
         }
 
@@ -148,6 +149,15 @@ textarea.form-control {
             background: #10cb6c;
             cursor: pointer;
             float: none;
+            max-width: 35%;
+            overflow: hidden;
+
+            &.long {
+                &:after {
+                    content: '...';
+                    display: inline;
+                }
+            }
         }
     }
 

@@ -27,6 +27,8 @@
     }
 
     &.content-boxed { max-width: $space-boxed; }
+
+    min-height: 80vh;
 }
 
 .content-side {

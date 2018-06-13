@@ -1,6 +1,8 @@
 .small-profile {
   float: left;
   position: relative;
+  cursor: pointer;
+  z-index: 10;
 
   .box {
     position: relative;
@@ -30,9 +32,9 @@
     }
 
     &:hover {
-      transition: all 0.1s linear;
-      box-shadow: none;
-      top: -5px;
+      //transition: all 0.1s linear;
+      //box-shadow: none;
+      //top: -5px;
     }
   }
 
@@ -135,7 +137,7 @@
   .name {
     color: #FFFFFF;
     font-weight: normal;
-    font-size: 18px;
+    font-size: 16px;
     text-transform: uppercase;
     min-height: 62px;
     margin-bottom: 0;
@@ -159,15 +161,28 @@
     border-radius: 3px;
     padding: 0px 5px;
     font-size: 12px;
-    margin-bottom: 10px;
+    margin-bottom: 5px;
     display: inline-block;
   }
 
   .descr {
-    //margin-left: 120px;
     position: relative;
     display: block;
-    min-height: 30px;
+    height: 200px;
+    overflow: hidden;
+
+    &:after {
+      background: -moz-linear-gradient(top, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 55%);
+      background: -webkit-linear-gradient(top, rgba(255,255,255,0) 0%,rgba(255,255,255,1) 55%);
+      background: linear-gradient(to bottom, rgba(255,255,255,0) 0%,rgba(255,255,255,1) 55%);
+      filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#00ffffff', endColorstr='#ffffff',GradientType=0 );
+      display: block;
+      content: '';
+      height: 40px;
+      width: 100%;
+      position: absolute;
+      bottom: 0;
+    }
 
     span {
       font-weight: bold;
@@ -184,6 +199,7 @@
     }
   }
 
+  //todo: refactor
   .posipaky {
     margin-left: 0;
     padding-left: 0;
@@ -238,12 +254,58 @@
       display: block;
     }
   }
+
+  .full-box {
+    display: none;
+  }
+
+  &:hover {
+    .short-box {
+      opacity: 0;
+      transition: all 0.1s linear;
+    }
+
+    .full-box {
+      transition: all 0.1s linear;
+      top: -5px;
+      left: -5px;
+      display: block;
+      position: absolute;
+      width: 100%;
+      z-index: 999;
+      //box-shadow: 0px 0px 23px 2px rgba(0,0,0,0.07);
+      box-shadow:         0px 0px 30px 0px rgba(50, 50, 50, 1);
+      height: auto;
+
+      .descr {
+        height: auto;
+
+        &:after {
+          display: none;
+        }
+      }
+    }
+  }
+
+  &.hovered {
+    .short-box {
+      opacity: 0;
+      transition: all 0.1s linear;
+    }
+  }
 }
 
 .row {
   .small-profile:last-child {
     @media (max-width: $screen-md-max) {
       margin-top: 40px;
+    }
+  }
+
+  &.hovered {
+    .short-box {
+      opacity: 0.8;
+      transition: all 0.1s linear;
     }
   }
 }
