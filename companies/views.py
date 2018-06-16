@@ -5,8 +5,10 @@ from django.views import View
 from django.views.generic import DetailView, TemplateView
 from django.http import JsonResponse
 from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 
 from elasticsearch_dsl.query import Q
+from elasticsearch_dsl import MultiSearch
 
 from companies.models import Company, Revision, Person
 from companies.elastic_models import Company as ElasticCompany
@@ -185,14 +187,14 @@ class SuggestView(View):
     def get(self, request):
         q = request.GET.get('q', '').strip()
 
-        suggestions = defaultdict(list)
-        order_of_suggest = []
+        suggestions = []
+        seen = set()
 
         s = ElasticCompany.search().source(
-            ['names_autocomplete', "latest_record", "full_edrpou", "companies"]
+            ['names_autocomplete']
         ).highlight('names_autocomplete').highlight_options(
-            order='score', fragment_size=500,
-            number_of_fragments=100,
+            order='score', fragment_size=100,
+            number_of_fragments=5,
             pre_tags=['<strong>'],
             post_tags=["</strong>"]
         )
@@ -229,18 +231,34 @@ class SuggestView(View):
         )[:200]
 
         res = s.execute()
+
         for r in res:
             if "names_autocomplete" in r.meta.highlight:
                 for candidate in r.meta.highlight["names_autocomplete"]:
-                    suggestions[candidate.lower()].append((candidate, r))
-                    if candidate.lower() not in order_of_suggest:
-                        order_of_suggest.append(candidate.lower())
+                    if candidate.lower() not in seen:
+                        suggestions.append(candidate)
+                        seen.add(candidate.lower())
+
+        ms = MultiSearch()
+
+        for sugg in suggestions[:20]:
+            q = strip_tags(sugg)
+            ms = ms.add(ElasticCompany.search().query(
+                "match_phrase",
+                all={
+                    "query": q
+                }
+            ).source(["latest_record", "full_edrpou", "companies", "latest_record"])[:1])
+
 
         rendered_result = [
             render_to_string("companies/autocomplete.html", {
-                "suggestion": suggestions[k]
+                "result": {
+                    "hl": k,
+                    "company": company
+                }
             })
-            for k in order_of_suggest[:20]
+            for k, company in zip(suggestions[:20], ms.execute())
         ]
 
         return JsonResponse(rendered_result, safe=False)
@@ -269,39 +287,60 @@ class SearchView(TemplateView):
 
         query = request.GET.get("q", "")
         search_type = request.GET.get("search_type", "strict")
+        is_addr = request.GET.get("is_addr", "false") == "true"
         if search_type not in ["strict", "loose", "fuzzy"]:
             search_type = "strict"
 
         if query:
-            nwords = len(re.findall(r'\w{3,}', query))
+            nwords = len(re.findall(r'\w{2,}', query))
 
             if nwords > 3:
                 should_match = str(nwords - int(nwords > 6) - 1)
             else:
                 should_match = "100%"
 
-            strict_query = ElasticCompany.search().query(
-                "match_phrase",
-                _all={
-                    "query": query
-                }
-            )
+            if not is_addr:
+                strict_query = ElasticCompany.search().query(
+                    "match_phrase",
+                    all={
+                        "query": query
+                    }
+                )
+
+                fuzzy_query = ElasticCompany.search().query(
+                    "match",
+                    all={
+                        "query": query,
+                        "operator": "and",
+                        "fuzziness": "auto"
+                    }
+                )
+            else:
+                strict_query = ElasticCompany.search().query(
+                    "match",
+                    all={
+                        "query": query,
+                        "operator": "or",
+                        "minimum_should_match": "-20%",
+                    }
+                )
+
+                fuzzy_query = ElasticCompany.search().query(
+                    "match",
+                    all={
+                        "query": query,
+                        "operator": "or",
+                        "minimum_should_match": "-20%",
+                        "fuzziness": "auto"
+                    }
+                )
 
             loose_query = ElasticCompany.search().query(
                 "match",
-                _all={
+                all={
                     "query": query,
                     "operator": "or",
                     "minimum_should_match": should_match,
-                }
-            )
-
-            fuzzy_query = ElasticCompany.search().query(
-                "match",
-                persons={
-                    "query": query,
-                    "operator": "and",
-                    "fuzziness": "auto"
                 }
             )
 
@@ -333,14 +372,22 @@ class SearchView(TemplateView):
             pre_tags=['<u class="match">'],
             post_tags=["</u>"]
         ).highlight(
-            "*.raw",
+            "*",
             require_field_match=False,
             fragment_size=100,
             number_of_fragments=5
         )
 
+        search_results = paginated(request, results)
+        for res in search_results:
+            res.hl = []
+            seen_hl = set()
+            for h_field in res.meta.highlight:
+                for content in res.meta.highlight[h_field]:
+                    res.hl.append(content)
+
         context.update({
-            "search_results": paginated(request, results),
+            "search_results": search_results,
             "query": query,
             "search_type": search_type,
             "strict_count": strict_count,

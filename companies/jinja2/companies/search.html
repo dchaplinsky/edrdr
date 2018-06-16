@@ -50,11 +50,10 @@
                         </header>
                         <div class="descr">{{ res.latest_record.status }}
                             <br/>
-                            {% for h_field in res.meta.highlight %}{% for content in res.meta.highlight[h_field] %}{{ content|safe }}<br/>{% endfor %}{% endfor %}
+                            {% for h_field in res.hl[:5] %}
+                                {{ h_field|safe }} <br />
+                            {% endfor %}
                         </div>
-                        <!--<div data-toggle="popover"
-                             title="" data-placement="top"
-                             data-content="" data-original-title="Тут якісь деталі">Детальніше</div>-->
                         <hr>
                         <footer>
                             {{ res.latest_record.location }}

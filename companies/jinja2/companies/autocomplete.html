@@ -1,12 +1,12 @@
-{% set sugg_text = suggestion[0][0] %}
-{% set first_rec = suggestion[0][1].to_dict() %}
-<span data-sugg_text="{{ sugg_text|striptags }}">
-{% if suggestion|length == 1 %}
-<span>{{ sugg_text|safe }}</span><span class="autocomplete-hint pull-right">{{ first_rec.full_edrpou }}{% if sugg_text|striptags not in first_rec.companies -%}
-, {{ first_rec.latest_record.short_name or first_rec.latest_record.name }}
-{%- endif %}
-</span>
-{% else %}
-<span>{{ sugg_text|safe }}</span><span class="autocomplete-hint pull-right">{{ suggestion|length }} {{ suggestion|length|uk_plural(_("компанія"), _("компанії"), _("компаній")) }}</span>
-{% endif %}
+<span data-sugg_text="{{ result.hl|striptags }}">
+    <span>{{ result.hl|safe }}</span>
+    <span class="autocomplete-hint pull-right">
+        {% if result.company.hits.total == 1 %}
+            {{ result.company[0].full_edrpou }}{% if result.hl|striptags not in result.company[0].companies -%}
+            , {{ result.company[0].latest_record.short_name or result.company[0].latest_record.name }}
+            {%- endif %}
+        {% else %}
+            {{ result.company.hits.total }} {{ result.company.hits.total|uk_plural(_("компанія"), _("компанії"), _("компаній")) }}
+        {% endif %}
+    </span>
 </span>

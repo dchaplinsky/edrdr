@@ -7,7 +7,7 @@ from elasticsearch_dsl import (
 from elasticsearch_dsl.query import Q
 
 ADDRESSES_INDEX = 'addresses'
-COMPANIES_INDEX = 'edrdr_companies'
+COMPANIES_INDEX = 'edrdr_companies_test'
 
 
 class Address(DocType):
@@ -29,6 +29,13 @@ class Address(DocType):
     oldStreet = Keyword(index=True, copy_to="all")
     oldDistrict = Keyword(index=True, copy_to="all")
     oldLocality = Keyword(index=True, copy_to="all")
+    all = Text(
+        analyzer='ukrainian',
+        fields={
+            "shingle": Text(analyzer="shingleAnalyzer", search_analyzer="shingleAnalyzer",)
+        }
+    )
+
 
     @classmethod
     def validate(cls, address):
@@ -151,14 +158,6 @@ class Address(DocType):
 
     class Meta:
         index = ADDRESSES_INDEX
-        all = MetaField(
-            type=Text(
-                analyzer='ukrainian',
-                fields={
-                    "shingle": Text(analyzer="shingleAnalyzer", search_analyzer="shingleAnalyzer",)
-                }
-            )
-        )
 
 
 addresses_idx = Index(ADDRESSES_INDEX)
@@ -225,16 +224,15 @@ class Company(DocType):
     """Company document."""
 
     full_edrpou = Keyword(index=True, copy_to="all")
-    addresses = Text(analyzer='ukrainian', fields={"raw": Text()})
-    persons = Text(analyzer='ukrainian', fields={"raw": Text()})
-    companies = Text(analyzer='ukrainian', fields={"raw": Text()})
+    addresses = Text(analyzer='ukrainian', copy_to="all")
+    persons = Text(analyzer='ukrainian', copy_to="all")
+    companies = Text(analyzer='ukrainian', copy_to="all")
     company_profiles = Keyword(index=True, copy_to="all")
     latest_record = Object()
-    raw_records = Text(analyzer='ukrainian', fields={"raw": Text()})
+    raw_records = Text(analyzer='ukrainian', copy_to="all")
     names_autocomplete = Text(
         analyzer='namesAutocompleteAnalyzer',
         search_analyzer="namesAutocompleteSearchAnalyzer"
     )
 
-    class Meta:
-        pass
+    all = Text(analyzer='ukrainian')

@@ -10,7 +10,11 @@
 {% macro render_person(person, show_person_type=True) %}
     {% set person_name = person.name|join(", ")|title %}
     <a href="{{ url('search>results') }}?q={{ person_name|urlencode }}" target="_blank" class="search-for">{{ person_name }}</a>{% if show_person_type %}, {{ person.get_person_type_display() }} {% endif %}<br/>
-    {% if person.address %}{{ person.address|join("<br/>")|safe }} <br/>{% endif %}
+    {% if person.address %}
+        {% for addr in person.address %}
+            <a href="{{ url('search>results') }}?q={{ addr|urlencode }}&is_addr=true" target="_blank" class="search-for">{{ addr }}</a> <br/>
+        {% endfor %}
+    {% endif %}
     {% if person.country %}{{ person.country|join("<br/>")|safe }} <br/>{% endif %}
     {% if person.person_type != "head" %}
     <small style="color: silver">{{ _("Оригінал запису з реєстру:") }} {{ person.raw_record }}</small>
@@ -84,7 +88,7 @@
             <div class="block-content tab-content">
                 <div class="tab-pane active show anchor-offset" id="company" role="tabpanel">
                     <div class="mb-20"><strong >{{ latest_record.get_status_display() }}</strong></div>
-                    <p>{{ latest_record.location }}</p>
+                    <p><a href="{{ url('search>results') }}?q={{ latest_record.location|urlencode }}&is_addr=true" target="_blank" class="search-for">{{ latest_record.location }}</a></p>
                     <p>{{ latest_record.company_profile }}</p>
                     <hr>
                     <div>{{ _("Оновлено від") }} <a href="{{ global_revisions[latest_record_revision].get_absolute_url() }}">{{ global_revisions[latest_record_revision].created|datetime }}</a></div>
@@ -165,7 +169,7 @@
                                             <td>{% if rec.short_name %}{{ rec.short_name }}{% endif %}</td>
                                             <td>{% if rec.get_status_display() %}{{ rec.get_status_display() }}{% endif %}</td>
                                             <td>{% if rec.company_profile %}{{ rec.company_profile }}{% endif %}</td>
-                                            <td>{% if rec.location %}{{ rec.location }}{% endif %}</td>
+                                            <td>{% if rec.location %}<a href="{{ url('search>results') }}?q={{ rec.location|urlencode }}&is_addr=true" target="_blank" class="search-for">{{ rec.location }}</a>{% endif %}</td>
                                         </tr>
                                         {% endfor %}
                                         </tbody>
@@ -224,11 +228,19 @@
                                                 <td>
                                                     {% for p in group.record if p.person_type == "founder" %}
                                                         {{ render_person(p, False) }}<br/>
+                                                    {% else %}
+                                                        {% if group.finish_revision.pk < 154423 %}
+                                                        <span data-toggle="tooltip" data-placement="bottom" title="{{ _("Це не значить, що у компанії не було засновника. Але у публічному дампі реєстру інформація про засновників і бенефіціарів з'явилась лише з 16 серпня 2017 року.") }}">{{ _("Інформація відсутня") }}</span>
+                                                        {% endif %}
                                                     {% endfor %}
                                                 </td>
                                                 <td>
                                                     {% for p in group.record if p.person_type == "owner" %}
                                                         {{ render_person(p, False) }}<br/>
+                                                    {% else %}
+                                                        {% if group.finish_revision.pk < 154423 %}
+                                                        <span data-toggle="tooltip" data-placement="bottom" title="{{ _("Це не значить, що у компанії не було засновника. Але у публічному дампі реєстру інформація про засновників і бенефіціарів з'явилась лише з 16 серпня 2017 року.") }}">{{ _("Інформація відсутня") }}</span>
+                                                        {% endif %}
                                                     {% endfor %}
                                                 </td>
                                             </tr>
