@@ -194,7 +194,7 @@ class SuggestView(View):
             ['names_autocomplete']
         ).highlight('names_autocomplete').highlight_options(
             order='score', fragment_size=100,
-            number_of_fragments=5,
+            number_of_fragments=10,
             pre_tags=['<strong>'],
             post_tags=["</strong>"]
         )
@@ -316,21 +316,21 @@ class SearchView(TemplateView):
                     }
                 )
             else:
+                no_zip_q = re.sub(r"\b\d{5,}\W", "", query)
                 strict_query = ElasticCompany.search().query(
                     "match",
-                    all={
-                        "query": query,
-                        "operator": "or",
-                        "minimum_should_match": "-20%",
+                    addresses={
+                        "query": no_zip_q,
+                        "operator": "and",
                     }
                 )
 
                 fuzzy_query = ElasticCompany.search().query(
                     "match",
-                    all={
-                        "query": query,
+                    addresses={
+                        "query": no_zip_q,
                         "operator": "or",
-                        "minimum_should_match": "-20%",
+                        "minimum_should_match": "-10%",
                         "fuzziness": "auto"
                     }
                 )
@@ -344,9 +344,15 @@ class SearchView(TemplateView):
                 }
             )
 
-            strict_count = strict_query.count()
-            loose_count = loose_query.count()
-            fuzzy_count = fuzzy_query.count()
+            ms = MultiSearch()
+            ms = ms.add(strict_query[:0])
+            ms = ms.add(loose_query[:0])
+            ms = ms.add(fuzzy_query[:0])
+            sc, lc, fc = ms.execute()
+
+            strict_count = sc.hits.total
+            loose_count = lc.hits.total
+            fuzzy_count = fc.hits.total
 
             if search_type == "fuzzy":
                 base_qs = fuzzy_query
@@ -361,9 +367,6 @@ class SearchView(TemplateView):
             qs = base_qs
         else:
             qs = ElasticCompany.search().query('match_all')
-            strict_query = qs
-            fuzzy_query = qs
-            loose_query = qs
 
             base_count = fuzzy_count = loose_count = strict_count = qs.count()
 
@@ -375,14 +378,20 @@ class SearchView(TemplateView):
             "*",
             require_field_match=False,
             fragment_size=100,
-            number_of_fragments=5
-        )
+            number_of_fragments=10
+        ).source([
+            "full_edrpou",
+            "latest_record.short_name",
+            "latest_record.name",
+            "latest_record.status",
+            "latest_record.location"
+        ])
 
         search_results = paginated(request, results)
         for res in search_results:
             res.hl = []
             seen_hl = set()
-            for h_field in res.meta.highlight:
+            for h_field in getattr(res.meta, "highlight", {}):
                 for content in res.meta.highlight[h_field]:
                     res.hl.append(content)
 

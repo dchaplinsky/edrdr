@@ -215,7 +215,26 @@ namesAutocompleteSearchAnalyzer = analyzer(
     tokenizer=tokenizer("lowercase")
 )
 
+ukrainianStopwordsAnalyzer = analyzer(
+    "ukrainianStopwordsAnalyzer",
+    type="ukrainian",
+    filter=[
+        token_filter(
+            'addresses_stopwords',
+            type='stop',
+            stopwords=[
+                'будинок', 'обл', 'район', 'вулиця', 'місто', 'м', 'квартира', 'вул', 'село',
+                'буд', 'кв', 'проспект', 'область', 'селище', 'міського', 'типу', 'офіс', 'н',
+                'р', 'б', 'с', 'провулок', 'корпус', 'бульвар', 'кімната', 'шосе', 'в', 'смт',
+                'просп', '№'
+            ]
+        ),
+        'lowercase'
+    ]
+)
+
 companies_idx.analyzer(namesAutocompleteAnalyzer)
+companies_idx.analyzer(ukrainianStopwordsAnalyzer)
 companies_idx.analyzer(namesAutocompleteSearchAnalyzer)
 
 
@@ -224,7 +243,7 @@ class Company(DocType):
     """Company document."""
 
     full_edrpou = Keyword(index=True, copy_to="all")
-    addresses = Text(analyzer='ukrainian', copy_to="all")
+    addresses = Text(analyzer='ukrainianStopwordsAnalyzer', copy_to="all")
     persons = Text(analyzer='ukrainian', copy_to="all")
     companies = Text(analyzer='ukrainian', copy_to="all")
     company_profiles = Keyword(index=True, copy_to="all")
