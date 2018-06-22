@@ -303,7 +303,8 @@ class SearchView(TemplateView):
                 strict_query = ElasticCompany.search().query(
                     "match_phrase",
                     all={
-                        "query": query
+                        "query": query,
+                        "slop": 6
                     }
                 )
 
