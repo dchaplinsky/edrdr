@@ -16,3 +16,6 @@ names-translator==1.0.2
 django-pipeline==1.6.14
 django-cacheops==4.0.6
 django-qartez==0.7.1
+gunicorn==19.8.1
+pyyaml==3.12
+werkzeug==0.14.1

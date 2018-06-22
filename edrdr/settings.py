@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'django.contrib.staticfiles',
     'django.contrib.sitemaps',
     'django.contrib.sites',
     'qartez',
@@ -93,6 +94,13 @@ TEMPLATES = [
         },
     },
 ]
+
+STATICFILES_STORAGE = 'pipeline.storage.PipelineCachedStorage'
+STATICFILES_FINDERS = (
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+    'pipeline.finders.PipelineFinder',
+)
 
 PIPELINE = {
     'COMPILERS': ('pipeline.compilers.sass.SASSCompiler',),
