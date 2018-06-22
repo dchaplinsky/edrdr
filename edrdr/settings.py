@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'pipeline',
     'cacheops',
     'companies',
+    'raven.contrib.django.raven_compat',
 ]
 
 MIDDLEWARE = [
