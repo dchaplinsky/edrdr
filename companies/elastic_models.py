@@ -163,7 +163,8 @@ class Address(DocType):
 addresses_idx = Index(ADDRESSES_INDEX)
 
 addresses_idx.settings(
-    number_of_shards=settings.NUM_THREADS
+    number_of_shards=settings.NUM_THREADS,
+    number_of_replicas=0
 )
 
 addresses_idx.doc_type(Address)
@@ -191,7 +192,8 @@ addresses_idx.analyzer(shingle_analyzer)
 
 companies_idx = Index(COMPANIES_INDEX)
 companies_idx.settings(
-    number_of_shards=settings.NUM_THREADS
+    number_of_shards=settings.NUM_THREADS,
+    number_of_replicas=0
 )
 
 namesAutocompleteAnalyzer = analyzer(
@@ -199,8 +201,8 @@ namesAutocompleteAnalyzer = analyzer(
     tokenizer=tokenizer(
         'autocompleteTokenizer',
         type='edge_ngram',
-        min_gram=2,
-        max_gram=20,
+        min_gram=1,
+        max_gram=25,
         token_chars=[
             'letter',
             'digit'
@@ -251,7 +253,8 @@ class Company(DocType):
     raw_records = Text(analyzer='ukrainian', copy_to="all")
     names_autocomplete = Text(
         analyzer='namesAutocompleteAnalyzer',
-        search_analyzer="namesAutocompleteSearchAnalyzer"
+        search_analyzer="namesAutocompleteSearchAnalyzer",
+        fields={'raw': Text(index=True)}
     )
 
     all = Text(analyzer='ukrainian')
