@@ -19,3 +19,4 @@ django-qartez==0.7.1
 gunicorn==19.8.1
 pyyaml==3.12
 werkzeug==0.14.1
+raven==6.9.0
