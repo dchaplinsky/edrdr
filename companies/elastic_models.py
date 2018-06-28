@@ -6,8 +6,8 @@ from elasticsearch_dsl import (
     MultiSearch, MetaField, Object)
 from elasticsearch_dsl.query import Q
 
-ADDRESSES_INDEX = 'addresses'
-COMPANIES_INDEX = 'edrdr_companies_test'
+ADDRESSES_INDEX = 'edrdr_addresses'
+COMPANIES_INDEX = 'edrdr_companies'
 
 
 class Address(DocType):
@@ -258,3 +258,6 @@ class Company(DocType):
     )
 
     all = Text(analyzer='ukrainian')
+
+    class Meta:
+        doc_type = "edrdr_companies_doctype"
