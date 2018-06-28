@@ -1,7 +1,7 @@
 {% extends "companies/base.html" %}
 
 {% block body_class %}page-search{% endblock %}
-{% block container_class %}sidebar-o side-scroll main-content-narrow page-header-fixed page-header-inverse{% endblock %}
+{% block container_class %}sidebar-o sidebar-inverse side-scroll main-content-narrow page-header-fixed page-header-inverse{% endblock %}
 
 {% block content %}
     <div class="content">
@@ -42,19 +42,22 @@
                 {% for res in search_results %}
                 <div class="small-profile col-lg-4 col-xl-3" itemscope="" itemtype="http://schema.org/Person" data-category="decl">
                     <div class="box active-box short-box">
-                        <header class="profile-header">
-                            <a href="{{ url("company>detail", args=[res.full_edrpou]) }}">
-                                <div class="edrpou">{{ res.full_edrpou }}</div>
-                                <h3 class="name" itemprop="name">{{ res.latest_record.short_name or res.latest_record.name }}</h3>
-                            </a>
-                        </header>
-                        <div class="descr">{{ res.latest_record.status }}
-                            <br/>
-                            {% for h_field in res.hl[:5] %}
-                                {{ h_field|safe }} <br />
-                            {% endfor %}
+                        <div class="header-content">
+                            <header class="profile-header">
+                                <a href="{{ url("company>detail", args=[res.full_edrpou]) }}">
+                                    <div class="edrpou">{{ res.full_edrpou }}</div>
+                                    <h3 class="name" itemprop="name">{{ res.latest_record.short_name or res.latest_record.name }}</h3>
+                                </a>
+                            </header>
+                            <div>
+                                <div class="descr">{{ res.latest_record.status }}
+                                    <br/>
+                                    {% for h_field in res.hl[:5] %}
+                                    {{ h_field|safe }} <br />
+                                    {% endfor %}
+                                </div>
+                            </div>
                         </div>
-                        <hr>
                         <footer>
                             {{ res.latest_record.location }}
                         </footer>
