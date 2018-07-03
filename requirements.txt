@@ -1,4 +1,4 @@
-Django==2.0.4
+Django==2.0.7
 Jinja2==2.10
 redis==2.10.6
 redispy==3.0.0
@@ -12,7 +12,7 @@ python-dateutil==2.7.2
 elasticsearch-dsl>=6.0.0,<7.0.0
 Js2Py==0.59
 python-Levenshtein==0.12.0
-names-translator==1.0.3
+names-translator==1.1.0
 django-pipeline==1.6.14
 django-cacheops==4.0.6
 django-qartez==0.7.1

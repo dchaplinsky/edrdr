@@ -5,10 +5,13 @@ from django.urls import reverse
 from django.forms.models import model_to_dict
 
 from tokenize_uk import tokenize_words
-from translitua import translit, UkrainianKMU
-
 from companies.exceptions import StatusDoesntExist
-from companies.tools.names import TRANSLITERATOR, parse_fullname, title
+
+from names_translator.name_utils import (
+    parse_and_generate,
+    autocomplete_suggestions
+)
+
 
 
 class Revision(models.Model):
@@ -85,14 +88,8 @@ class Company(models.Model):
                 raw_records.add(person.raw_record)
 
         for name, position in persons:
-            names_autocomplete.add(title(name))
-            names_autocomplete.add(translit(title(name), UkrainianKMU))
-
-            all_persons.add("{}, {}".format(name, position))
-
-            l, f, p, _ = parse_fullname(name)
-            for tr_name in TRANSLITERATOR.transliterate(l, f, p):
-                all_persons.add("{}, {}".format(tr_name, position))
+            all_persons |= parse_and_generate(name, position)
+            names_autocomplete |= autocomplete_suggestions(name)
 
         return {
             "full_edrpou": self.full_edrpou,
