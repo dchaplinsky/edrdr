@@ -5,7 +5,7 @@ from django.utils.translation import gettext, ngettext
 
 from jinja2 import Environment
 
-from companies.tools.names import title
+from names_translator.name_utils import title
 from companies.tools.formaters import ukr_plural, curformat
 
 
