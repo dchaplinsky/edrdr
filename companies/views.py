@@ -195,6 +195,7 @@ class SuggestView(View):
         ).highlight('names_autocomplete').highlight_options(
             order='score', fragment_size=100,
             number_of_fragments=10,
+            type="fvh",
             pre_tags=['<strong>'],
             post_tags=["</strong>"]
         )

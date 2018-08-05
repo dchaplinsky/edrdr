@@ -254,7 +254,8 @@ class Company(DocType):
     names_autocomplete = Text(
         analyzer='namesAutocompleteAnalyzer',
         search_analyzer="namesAutocompleteSearchAnalyzer",
-        fields={'raw': Text(index=True)}
+        fields={'raw': Text(index=True)},
+        term_vector="with_positions_offsets"
     )
 
     all = Text(analyzer='ukrainian')
