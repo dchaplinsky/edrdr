@@ -7,6 +7,8 @@
     <link rel="canonical" href="{{ SITE_URL }}{{ latest_record.company.get_absolute_url() }}" />
 {% endblock %}
 
+{% block site_title %}{{ latest_record.name }} - {{ latest_record.company.full_edrpou }} - державний реєстр юросіб{% endblock %}
+
 {% macro render_person(person, show_person_type=True) %}
     {% set person_name = person.name|join(", ")|title %}
     <a href="{{ url('search>results') }}?q={{ person_name|urlencode }}" target="_blank" class="search-for">{{ person_name }}</a>{% if show_person_type %}, {{ person.get_person_type_display() }} {% endif %}<br/>
