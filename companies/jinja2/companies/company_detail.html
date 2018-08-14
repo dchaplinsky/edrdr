@@ -13,6 +13,7 @@
     <span itemprop="{% if person.person_type != "head" %}founder{% else %}employee{% endif%}" itemscope="" itemtype="http://schema.org/Person">
     {% set person_name = person.name|join(", ")|title %}
     <a href="{{ url('search>results') }}?q={{ person_name|urlencode }}" target="_blank" class="search-for"><span itemprop="name">{{ person_name }}</span></a>{% if show_person_type %}, {{ person.get_person_type_display() }} {% endif %}<br/>
+    {% for alt_name in parse_and_generate(person_name) %}<meta itemprop="alternateName" content="{{ alt_name }}" />{% endfor %}
     {% if person.address %}
         {% for addr in person.address %}
             <a href="{{ url('search>results') }}?q={{ addr|urlencode }}&is_addr=true" target="_blank" class="search-for"><span itemprop="address">{{ addr }}</span></a> <br/>

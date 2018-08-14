@@ -7,6 +7,7 @@ from jinja2 import Environment
 
 from names_translator.name_utils import title
 from companies.tools.formaters import ukr_plural, curformat
+from names_translator.name_utils import parse_and_generate
 
 
 def updated_querystring(request, params):
@@ -37,7 +38,8 @@ def environment(**options):
         'curformat': curformat,
     })
     env.globals.update({
-        'updated_querystring': updated_querystring
+        'updated_querystring': updated_querystring,
+        'parse_and_generate': parse_and_generate
     })
 
     return env
