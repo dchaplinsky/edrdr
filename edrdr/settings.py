@@ -29,7 +29,7 @@ ALLOWED_HOSTS = []
 LANGUAGE_CODE = 'uk'
 SITE_ID = 1
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
-
+SITE_URL = "https://ring.org.ua/edr"
 # Application definition
 
 INSTALLED_APPS = [
@@ -73,6 +73,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'companies.context_processors.settings_processor',
             ],
             "extensions": [
                 'pipeline.jinja2.PipelineExtension',
@@ -91,6 +92,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'companies.context_processors.settings_processor',
             ],
         },
     },

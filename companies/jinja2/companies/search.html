@@ -40,13 +40,13 @@
             </div>
             <div class="row items-push">
                 {% for res in search_results %}
-                <div class="small-profile col-lg-4 col-xl-3" itemscope="" itemtype="http://schema.org/Person" data-category="decl">
+                <div class="small-profile col-lg-4 col-xl-3" itemscope="" itemtype="http://schema.org/Organization" data-category="decl">
                     <div class="box active-box short-box">
                         <div class="header-content">
                             <header class="profile-header">
-                                <a href="{{ url("company>detail", args=[res.full_edrpou]) }}">
-                                    <div class="edrpou">{{ res.full_edrpou }}</div>
-                                    <h3 class="name" itemprop="name">{{ res.latest_record.short_name or res.latest_record.name }}</h3>
+                                <a href="{{ url("company>detail", args=[res.full_edrpou]) }}" itemprop="url">
+                                    <div class="edrpou" itemprop="taxID">{{ res.full_edrpou }}</div>
+                                    <h3 class="name" itemprop="legalName">{{ res.latest_record.short_name or res.latest_record.name }}</h3>
                                 </a>
                             </header>
                             <div>
@@ -58,7 +58,7 @@
                                 </div>
                             </div>
                         </div>
-                        <footer>
+                        <footer itemprop="address">
                             {{ res.latest_record.location }}
                         </footer>
                     </div>
@@ -66,16 +66,13 @@
                         <header class="profile-header">
                             <a href="{{ url("company>detail", args=[res.full_edrpou]) }}">
                                 <div class="edrpou">{{ res.full_edrpou }}</div>
-                                <h3 class="name" itemprop="name">{{ res.latest_record.short_name or res.latest_record.name }}</h3>
+                                <h3 class="name">{{ res.latest_record.short_name or res.latest_record.name }}</h3>
                             </a>
                         </header>
                         <div class="descr">{{ res.latest_record.status }}
                             <br/>
                             {% for h_field in res.meta.highlight %}{% for content in res.meta.highlight[h_field] %}{{ content|safe }}<br/>{% endfor %}{% endfor %}
                         </div>
-                        <!--<div data-toggle="popover"
-                             title="" data-placement="top"
-                             data-content="" data-original-title="Тут якісь деталі">Детальніше</div>-->
                         <hr>
                         <footer>
                             {{ res.latest_record.location }}
