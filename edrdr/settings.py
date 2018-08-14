@@ -29,7 +29,7 @@ ALLOWED_HOSTS = []
 LANGUAGE_CODE = 'uk'
 SITE_ID = 1
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
-SITE_URL = "https://ring.org.ua/edr"
+SITE_URL = "https://ring.org.ua"
 # Application definition
 
 INSTALLED_APPS = [
