@@ -63,20 +63,20 @@
                         </footer>
                     </div>
                     <div class="box active-box full-box">
-                        <header class="profile-header">
-                            <a href="{{ url("company>detail", args=[res.full_edrpou]) }}">
+                        <a href="{{ url("company>detail", args=[res.full_edrpou]) }}">
+                            <header class="profile-header">
                                 <div class="edrpou">{{ res.full_edrpou }}</div>
                                 <h3 class="name">{{ res.latest_record.short_name or res.latest_record.name }}</h3>
-                            </a>
-                        </header>
-                        <div class="descr">{{ res.latest_record.status }}
-                            <br/>
-                            {% for h_field in res.meta.highlight %}{% for content in res.meta.highlight[h_field] %}{{ content|safe }}<br/>{% endfor %}{% endfor %}
-                        </div>
-                        <hr>
-                        <footer>
-                            {{ res.latest_record.location }}
-                        </footer>
+                            </header>
+                            <div class="descr">{{ res.latest_record.status }}
+                                <br/>
+                                {% for h_field in res.meta.highlight %}{% for content in res.meta.highlight[h_field] %}{{ content|safe }}<br/>{% endfor %}{% endfor %}
+                            </div>
+                            <hr>
+                            <footer>
+                                {{ res.latest_record.location }}
+                            </footer>
+                        </a>
                     </div>
                 </div>
                 {% endfor %}
