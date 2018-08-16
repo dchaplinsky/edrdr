@@ -40,13 +40,13 @@
             </div>
             <div class="row items-push">
                 {% for res in search_results %}
-                <div class="small-profile col-lg-4 col-xl-3" itemscope="" itemtype="http://schema.org/Person" data-category="decl">
+                <div class="small-profile col-lg-4 col-xl-3" itemscope="" itemtype="http://schema.org/Organization" data-category="decl">
                     <div class="box active-box short-box">
                         <div class="header-content">
                             <header class="profile-header">
-                                <a href="{{ url("company>detail", args=[res.full_edrpou]) }}">
-                                    <div class="edrpou">{{ res.full_edrpou }}</div>
-                                    <h3 class="name" itemprop="name">{{ res.latest_record.short_name or res.latest_record.name }}</h3>
+                                <a href="{{ url("company>detail", args=[res.full_edrpou]) }}" itemprop="url">
+                                    <div class="edrpou" itemprop="taxID">{{ res.full_edrpou }}</div>
+                                    <h3 class="name" itemprop="legalName">{{ res.latest_record.short_name or res.latest_record.name }}</h3>
                                 </a>
                             </header>
                             <div>
@@ -58,16 +58,15 @@
                                 </div>
                             </div>
                         </div>
-                        <footer>
+                        <footer itemprop="address">
                             {{ res.latest_record.location }}
                         </footer>
                     </div>
                     <div class="box active-box full-box">
                         <a href="{{ url("company>detail", args=[res.full_edrpou]) }}">
                             <header class="profile-header">
-
-                                    <div class="edrpou">{{ res.full_edrpou }}</div>
-                                    <h3 class="name" itemprop="name">{{ res.latest_record.short_name or res.latest_record.name }}</h3>
+                                <div class="edrpou">{{ res.full_edrpou }}</div>
+                                <h3 class="name">{{ res.latest_record.short_name or res.latest_record.name }}</h3>
                             </header>
                             <div class="descr">{{ res.latest_record.status }}
                                 <br/>

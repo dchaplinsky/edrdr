@@ -6,7 +6,8 @@ from django.utils.translation import activate
 
 class CompanySitemap(RelAlternateHreflangSitemap):
     changefreq = "monthly"
-    limit = 5000
+    protocol = "https"
+    limit = 50000
 
     def items(self):
         return Company.objects.filter().nocache().order_by("pk")

@@ -7,18 +7,23 @@
     <link rel="canonical" href="{{ SITE_URL }}{{ latest_record.company.get_absolute_url() }}" />
 {% endblock %}
 
+{% block site_title %}{{ latest_record.name }} - {{ latest_record.company.full_edrpou }} - державний реєстр юросіб{% endblock %}
+
 {% macro render_person(person, show_person_type=True) %}
+    <span itemprop="{% if person.person_type != "head" %}founder{% else %}employee{% endif%}" itemscope="" itemtype="http://schema.org/Person">
     {% set person_name = person.name|join(", ")|title %}
-    <a href="{{ url('search>results') }}?q={{ person_name|urlencode }}" target="_blank" class="search-for">{{ person_name }}</a>{% if show_person_type %}, {{ person.get_person_type_display() }} {% endif %}<br/>
+    <a href="{{ url('search>results') }}?q={{ person_name|urlencode }}" target="_blank" class="search-for"><span itemprop="name">{{ person_name }}</span></a>{% if show_person_type %}, {{ person.get_person_type_display() }} {% endif %}<br/>
+    {% for alt_name in parse_and_generate(person_name) %}<meta itemprop="alternateName" content="{{ alt_name }}" />{% endfor %}
     {% if person.address %}
         {% for addr in person.address %}
-            <a href="{{ url('search>results') }}?q={{ addr|urlencode }}&is_addr=true" target="_blank" class="search-for">{{ addr }}</a> <br/>
+            <a href="{{ url('search>results') }}?q={{ addr|urlencode }}&is_addr=true" target="_blank" class="search-for"><span itemprop="address">{{ addr }}</span></a> <br/>
         {% endfor %}
     {% endif %}
-    {% if person.country %}{{ person.country|join("<br/>")|safe }} <br/>{% endif %}
+    {% if person.country %}<span itemprop="nationality">{{ person.country|join("<br/>")|safe }}</span><br/>{% endif %}
     {% if person.person_type != "head" %}
     <small style="color: silver">{{ _("Оригінал запису з реєстру:") }} {{ person.raw_record }}</small>
     {% endif %}
+    </span>
 {% endmacro %}
 
 {% block left_sidebar %}
@@ -59,13 +64,15 @@
 
 
 {% block content %}
+<div itemscope="" itemtype="http://schema.org/Organization">
+    <span itemprop="url" style="display: none">{{ SITE_URL }}{{ latest_record.company.get_absolute_url() }}</span>
     <div class="bg-primary">
         <div class="bg-pattern bg-black-op-25" style="background-image: url({{ static("img/various/bg-pattern.jpg") }});">
             <div class="content content-top text-center">
                 <div class="mb-50">
-                    <h1 class="font-w700 text-white mb-10">{{ latest_record.name }} ({{ latest_record.company.full_edrpou }})</h1>
+                    <h1 class="font-w700 text-white mb-10"><span itemprop="legalName">{{ latest_record.name }}</span> (<span  itemprop="taxID">{{latest_record.company.full_edrpou }}</span>)</h1>
                     {% if latest_record.short_name and latest_record.short_name|lower != "немає" %}
-                    <h2 class="h4 font-w400 text-white-op">{{ latest_record.short_name }}</h2>
+                    <h2 class="h4 font-w400 text-white-op" itemprop="name">{{ latest_record.short_name }}</h2>
                     {% endif %}
                 </div>
             </div>
@@ -97,7 +104,7 @@
                     <div class="block-content tab-content">
                         <div class="tab-pane active show anchor-offset" id="company" role="tabpanel">
                             <div class="mb-20"><strong >{{ latest_record.get_status_display() }}</strong></div>
-                            <p><a href="{{ url('search>results') }}?q={{ latest_record.location|urlencode }}&is_addr=true" target="_blank" class="search-for">{{ latest_record.location }}</a></p>
+                            <p><a href="{{ url('search>results') }}?q={{ latest_record.location|urlencode }}&is_addr=true" target="_blank" class="search-for"><span itemprop="address">{{ latest_record.location }}</span></a></p>
                             <p>{{ latest_record.company_profile }}</p>
                             <hr>
                             <div>{{ _("Оновлено від") }} <a href="{{ global_revisions[latest_record_revision].get_absolute_url() }}">{{ global_revisions[latest_record_revision].created|datetime }}</a></div>
@@ -178,7 +185,7 @@
                                                 <td>{% if rec.short_name %}{{ rec.short_name }}{% endif %}</td>
                                                 <td>{% if rec.get_status_display() %}{{ rec.get_status_display() }}{% endif %}</td>
                                                 <td>{% if rec.company_profile %}{{ rec.company_profile }}{% endif %}</td>
-                                                <td>{% if rec.location %}<a href="{{ url('search>results') }}?q={{ rec.location|urlencode }}&is_addr=true" target="_blank" class="search-for">{{ rec.location }}</a>{% endif %}</td>
+                                                <td>{% if rec.location %}<a href="{{ url('search>results') }}?q={{ rec.location|urlencode }}&is_addr=true" target="_blank" class="search-for"><span itemprop="address">{{ rec.location }}</span></a>{% endif %}</td>
                                             </tr>
                                             {% endfor %}
                                             </tbody>
@@ -265,5 +272,6 @@
             </div>
         </div>
     </div>
+</div>
 {% endblock %}
 
