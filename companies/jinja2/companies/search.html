@@ -63,23 +63,21 @@
                         </footer>
                     </div>
                     <div class="box active-box full-box">
-                        <header class="profile-header">
-                            <a href="{{ url("company>detail", args=[res.full_edrpou]) }}">
-                                <div class="edrpou">{{ res.full_edrpou }}</div>
-                                <h3 class="name" itemprop="name">{{ res.latest_record.short_name or res.latest_record.name }}</h3>
-                            </a>
-                        </header>
-                        <div class="descr">{{ res.latest_record.status }}
-                            <br/>
-                            {% for h_field in res.meta.highlight %}{% for content in res.meta.highlight[h_field] %}{{ content|safe }}<br/>{% endfor %}{% endfor %}
-                        </div>
-                        <!--<div data-toggle="popover"
-                             title="" data-placement="top"
-                             data-content="" data-original-title="Тут якісь деталі">Детальніше</div>-->
-                        <hr>
-                        <footer>
-                            {{ res.latest_record.location }}
-                        </footer>
+                        <a href="{{ url("company>detail", args=[res.full_edrpou]) }}">
+                            <header class="profile-header">
+
+                                    <div class="edrpou">{{ res.full_edrpou }}</div>
+                                    <h3 class="name" itemprop="name">{{ res.latest_record.short_name or res.latest_record.name }}</h3>
+                            </header>
+                            <div class="descr">{{ res.latest_record.status }}
+                                <br/>
+                                {% for h_field in res.meta.highlight %}{% for content in res.meta.highlight[h_field] %}{{ content|safe }}<br/>{% endfor %}{% endfor %}
+                            </div>
+                            <hr>
+                            <footer>
+                                {{ res.latest_record.location }}
+                            </footer>
+                        </a>
                     </div>
                 </div>
                 {% endfor %}

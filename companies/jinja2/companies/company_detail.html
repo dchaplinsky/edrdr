@@ -1,7 +1,7 @@
 {% extends "companies/base.html" %}
 
 {% block body_class %}page-company{% endblock %}
-{% block container_class %}sidebar-o sidebar-inverse side-scroll page-header-fixed page-header-glass page-header-inverse main-content-narrow{% endblock %}
+{% block container_class %}sidebar-o sidebar-inverse side-scroll main-content-narrow page-header-fixed page-header-inverse{% endblock %}
 
 {% block head %}
     <link rel="canonical" href="{{ SITE_URL }}{{ latest_record.company.get_absolute_url() }}" />
@@ -72,75 +72,84 @@
         </div>
     </div>
 
-    <div class="content">
-        <div class="block pb-20">
-            <ul class="nav nav-tabs nav-tabs-block align-items-center " data-toggle="tabs" role="tablist">
-                <li class="nav-item">
-                    <h5 class="mb-0"><a class="nav-link active show" href="#company">{{ _("Картка компанії") }}</a></h5>
-                </li>
-                <li class="nav-item ml-auto">
-                    <div class="block-options mr-15">
-                        <button type="button" class="btn-block-option" data-toggle="block-option" data-action="fullscreen_toggle"><i class="si si-size-fullscreen"></i></button>
-                        <button type="button" class="btn-block-option" data-toggle="block-option" data-action="content_toggle"><i class="si si-arrow-up"></i></button>
-                    </div>
-                </li>
-            </ul>
-            <div class="block-content tab-content">
-                <div class="tab-pane active show anchor-offset" id="company" role="tabpanel">
-                    <div class="mb-20"><strong >{{ latest_record.get_status_display() }}</strong></div>
-                    <p><a href="{{ url('search>results') }}?q={{ latest_record.location|urlencode }}&is_addr=true" target="_blank" class="search-for">{{ latest_record.location }}</a></p>
-                    <p>{{ latest_record.company_profile }}</p>
-                    <hr>
-                    <div>{{ _("Оновлено від") }} <a href="{{ global_revisions[latest_record_revision].get_absolute_url() }}">{{ global_revisions[latest_record_revision].created|datetime }}</a></div>
-                </div>
+    <div class="block document-details bg-transparent">
+        <div class="block-header block-header-default bg-transparent content">
+            <div class="block-options">
+                <button type="button" class="btn-block-option" onclick="Edrdr.helpers('print-page');">
+                    <i class="si si-printer"></i> Друкувати
+                </button>
             </div>
         </div>
-        {% if latest_persons %}
-            <div class="block pb-20">
-                <ul class="nav nav-tabs nav-tabs-block align-items-center " data-toggle="tabs" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link active show" href="#heads">{{ _("Керівництво") }}</a>
-                    </li>
-                    <li class="nav-item ml-auto">
-                        <div class="block-options mr-15">
-                            <button type="button" class="btn-block-option" data-toggle="block-option" data-action="fullscreen_toggle"><i class="si si-size-fullscreen"></i></button>
-                            <button type="button" class="btn-block-option" data-toggle="block-option" data-action="content_toggle"><i class="si si-arrow-up"></i></button>
+        <div class="block-content">
+            <div class="content">
+                <div class="block pb-20">
+                    <ul class="nav nav-tabs nav-tabs-block align-items-center " data-toggle="tabs" role="tablist">
+                        <li class="nav-item">
+                            <h5 class="mb-0"><a class="nav-link active show" href="#company">{{ _("Картка компанії") }}</a></h5>
+                        </li>
+                        <li class="nav-item ml-auto">
+                            <div class="block-options mr-15">
+                                <button type="button" class="btn-block-option" data-toggle="block-option" data-action="fullscreen_toggle"><i class="si si-size-fullscreen"></i></button>
+                                <button type="button" class="btn-block-option" data-toggle="block-option" data-action="content_toggle"><i class="si si-arrow-up"></i></button>
+                            </div>
+                        </li>
+                    </ul>
+                    <div class="block-content tab-content">
+                        <div class="tab-pane active show anchor-offset" id="company" role="tabpanel">
+                            <div class="mb-20"><strong >{{ latest_record.get_status_display() }}</strong></div>
+                            <p><a href="{{ url('search>results') }}?q={{ latest_record.location|urlencode }}&is_addr=true" target="_blank" class="search-for">{{ latest_record.location }}</a></p>
+                            <p>{{ latest_record.company_profile }}</p>
+                            <hr>
+                            <div>{{ _("Оновлено від") }} <a href="{{ global_revisions[latest_record_revision].get_absolute_url() }}">{{ global_revisions[latest_record_revision].created|datetime }}</a></div>
                         </div>
-                    </li>
-                </ul>
-                <div class="block-content tab-content">
-                    <div class="tab-pane active show anchor-offset" id="seo" role="tabpanel">
-                        <ul>
-                            {% for person in latest_persons %}
-                            <li>
-                                {{ render_person(person) }}
-                            </li>
-                            {% endfor %}
-                        </ul>
-                        <hr>
-                        {{ _("Оновлено від") }} <a href="{{ global_revisions[latest_persons_revision].get_absolute_url() }}">{{ global_revisions[latest_persons_revision].created|datetime }}</a>
                     </div>
                 </div>
-            </div>
-        {% endif %}
-        <div class="block pb-20 block-transparent">
-            <ul class="nav nav-tabs nav-tabs-block align-items-center " data-toggle="tabs" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link active show" href="#company-history">{{ _("Історія змін компанії") }}</a>
-                </li>
-                <li class="nav-item ml-auto">
-                    <div class="block-options mr-15">
-                        <button type="button" class="btn-block-option" data-toggle="block-option" data-action="fullscreen_toggle"><i class="si si-size-fullscreen"></i></button>
-                        <button type="button" class="btn-block-option" data-toggle="block-option" data-action="content_toggle"><i class="si si-arrow-up"></i></button>
+                {% if latest_persons %}
+                <div class="block pb-20">
+                    <ul class="nav nav-tabs nav-tabs-block align-items-center " data-toggle="tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active show" href="#heads">{{ _("Керівництво") }}</a>
+                        </li>
+                        <li class="nav-item ml-auto">
+                            <div class="block-options mr-15">
+                                <button type="button" class="btn-block-option" data-toggle="block-option" data-action="fullscreen_toggle"><i class="si si-size-fullscreen"></i></button>
+                                <button type="button" class="btn-block-option" data-toggle="block-option" data-action="content_toggle"><i class="si si-arrow-up"></i></button>
+                            </div>
+                        </li>
+                    </ul>
+                    <div class="block-content tab-content">
+                        <div class="tab-pane active show anchor-offset" id="seo" role="tabpanel">
+                            <ul>
+                                {% for person in latest_persons %}
+                                <li>
+                                    {{ render_person(person) }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            <hr>
+                            {{ _("Оновлено від") }} <a href="{{ global_revisions[latest_persons_revision].get_absolute_url() }}">{{ global_revisions[latest_persons_revision].created|datetime }}</a>
+                        </div>
                     </div>
-                </li>
-            </ul>
-            {% for group in grouped_company_records %}
-                <div class="block-content tab-content pl-0 pr-0">
-                    <div class="tab-pane active show anchor-offset" id="company-history" role="tabpanel">
-                        <ul class="cbp_tmtimeline">
-                            <li>
-                                <time class="cbp_tmtime" datetime="2015-11-04T18:30">
+                </div>
+                {% endif %}
+                <div class="block pb-20 block-transparent">
+                    <ul class="nav nav-tabs nav-tabs-block align-items-center " data-toggle="tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active show" href="#company-history">{{ _("Історія змін компанії") }}</a>
+                        </li>
+                        <li class="nav-item ml-auto">
+                            <div class="block-options mr-15">
+                                <button type="button" class="btn-block-option" data-toggle="block-option" data-action="fullscreen_toggle"><i class="si si-size-fullscreen"></i></button>
+                                <button type="button" class="btn-block-option" data-toggle="block-option" data-action="content_toggle"><i class="si si-arrow-up"></i></button>
+                            </div>
+                        </li>
+                    </ul>
+                    {% for group in grouped_company_records %}
+                    <div class="block-content tab-content pl-0 pr-0">
+                        <div class="tab-pane active show anchor-offset" id="company-history" role="tabpanel">
+                            <ul class="cbp_tmtimeline">
+                                <li>
+                                    <time class="cbp_tmtime" datetime="2015-11-04T18:30">
                                 <span>
                                     {% if group.start_revision == group.finish_revision %}
                                         <a href="{{ group.start_revision.get_absolute_url() }}">{{ group.start_revision.created|datetime }}</a>
@@ -149,56 +158,56 @@
                                         <a href="{{ group.finish_revision.get_absolute_url() }}">{{ group.finish_revision.created|datetime }}</a>
                                     {% endif %}
                                 </span>
-                                </time>
-                                <div class="cbp_tmicon bg-info"><i class="si si-calendar"></i></div>
-                                <div class="cbp_tmlabel">
-                                    <table class="table table-sm table-vcenter">
-                                        <thead>
-                                        <tr>
-                                            <th>{{ _("Повна назва") }}</th>
-                                            <th>{{ _("Скорочена назва") }}</th>
-                                            <th>{{ _("Статус") }}</th>
-                                            <th>{{ _("Профіль компанії") }}</th>
-                                            <th>{{ _("Адреса") }}</th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        {% for rec in group.record %}
-                                        <tr>
-                                            <td>{% if rec.name %}{{ rec.name }}{% endif %}</td>
-                                            <td>{% if rec.short_name %}{{ rec.short_name }}{% endif %}</td>
-                                            <td>{% if rec.get_status_display() %}{{ rec.get_status_display() }}{% endif %}</td>
-                                            <td>{% if rec.company_profile %}{{ rec.company_profile }}{% endif %}</td>
-                                            <td>{% if rec.location %}<a href="{{ url('search>results') }}?q={{ rec.location|urlencode }}&is_addr=true" target="_blank" class="search-for">{{ rec.location }}</a>{% endif %}</td>
-                                        </tr>
-                                        {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </li>
-                        </ul>
+                                    </time>
+                                    <div class="cbp_tmicon bg-info"><i class="si si-calendar"></i></div>
+                                    <div class="cbp_tmlabel">
+                                        <table class="table table-sm table-vcenter">
+                                            <thead>
+                                            <tr>
+                                                <th>{{ _("Повна назва") }}</th>
+                                                <th>{{ _("Скорочена назва") }}</th>
+                                                <th>{{ _("Статус") }}</th>
+                                                <th>{{ _("Профіль компанії") }}</th>
+                                                <th>{{ _("Адреса") }}</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {% for rec in group.record %}
+                                            <tr>
+                                                <td>{% if rec.name %}{{ rec.name }}{% endif %}</td>
+                                                <td>{% if rec.short_name %}{{ rec.short_name }}{% endif %}</td>
+                                                <td>{% if rec.get_status_display() %}{{ rec.get_status_display() }}{% endif %}</td>
+                                                <td>{% if rec.company_profile %}{{ rec.company_profile }}{% endif %}</td>
+                                                <td>{% if rec.location %}<a href="{{ url('search>results') }}?q={{ rec.location|urlencode }}&is_addr=true" target="_blank" class="search-for">{{ rec.location }}</a>{% endif %}</td>
+                                            </tr>
+                                            {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
+                    {% endfor %}
                 </div>
-            {% endfor %}
-        </div>
-        <div class="block pb-20 block-transparent">
-            <ul class="nav nav-tabs nav-tabs-block align-items-center " data-toggle="tabs" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link active show" href="#heads-history">{{ _("Історія змін керівництва") }}</a>
-                </li>
-                <li class="nav-item ml-auto">
-                    <div class="block-options mr-15">
-                        <button type="button" class="btn-block-option" data-toggle="block-option" data-action="fullscreen_toggle"><i class="si si-size-fullscreen"></i></button>
-                        <button type="button" class="btn-block-option" data-toggle="block-option" data-action="content_toggle"><i class="si si-arrow-up"></i></button>
-                    </div>
-                </li>
-            </ul>
-            <div class="block-content tab-content pl-0 pr-0">
-                <div class="tab-pane active show anchor-offset" id="seo-history" role="tabpanel">
-                    <ul class="cbp_tmtimeline">
-                        {% for group in grouped_persons_records %}
-                            <li>
-                                <time class="cbp_tmtime" datetime="">
+                <div class="block pb-20 block-transparent">
+                    <ul class="nav nav-tabs nav-tabs-block align-items-center " data-toggle="tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active show" href="#heads-history">{{ _("Історія змін керівництва") }}</a>
+                        </li>
+                        <li class="nav-item ml-auto">
+                            <div class="block-options mr-15">
+                                <button type="button" class="btn-block-option" data-toggle="block-option" data-action="fullscreen_toggle"><i class="si si-size-fullscreen"></i></button>
+                                <button type="button" class="btn-block-option" data-toggle="block-option" data-action="content_toggle"><i class="si si-arrow-up"></i></button>
+                            </div>
+                        </li>
+                    </ul>
+                    <div class="block-content tab-content pl-0 pr-0">
+                        <div class="tab-pane active show anchor-offset" id="seo-history" role="tabpanel">
+                            <ul class="cbp_tmtimeline">
+                                {% for group in grouped_persons_records %}
+                                <li>
+                                    <time class="cbp_tmtime" datetime="">
                                 <span>
                                     {% if group.start_revision == group.finish_revision %}
                                         <a href="{{ group.start_revision.get_absolute_url() }}">{{ group.start_revision.created|datetime }}</a>
@@ -207,49 +216,51 @@
                                         <a href="{{ group.finish_revision.get_absolute_url() }}">{{ group.finish_revision.created|datetime }}</a>
                                     {% endif %}
                                 </span>
-                                </time>
-                                <div class="cbp_tmicon bg-info"><i class="si si-calendar"></i></div>
-                                <div class="cbp_tmlabel">
-                                    <table class="table-sm table-vcenter">
-                                        <thead>
+                                    </time>
+                                    <div class="cbp_tmicon bg-info"><i class="si si-calendar"></i></div>
+                                    <div class="cbp_tmlabel">
+                                        <table class="table-sm table-vcenter">
+                                            <thead>
                                             <tr>
                                                 <th>{{ _("Керівник") }}</th>
                                                 <th>{{ _("Засновник") }}</th>
                                                 <th>{{ _("Бенефіціарний власник") }}</th>
                                             </tr>
-                                        </thead>
-                                        <tbody>
+                                            </thead>
+                                            <tbody>
                                             <tr>
                                                 <td>
                                                     {% for p in group.record if p.person_type == "head" %}
-                                                        {{ render_person(p, False) }}<br/>
+                                                    {{ render_person(p, False) }}<br/>
                                                     {% endfor %}
                                                 </td>
                                                 <td>
                                                     {% for p in group.record if p.person_type == "founder" %}
-                                                        {{ render_person(p, False) }}<br/>
+                                                    {{ render_person(p, False) }}<br/>
                                                     {% else %}
-                                                        {% if group.finish_revision.pk < 154423 %}
-                                                        <span data-toggle="tooltip" data-placement="bottom" title="{{ _("Це не значить, що у компанії не було засновника. Але у публічному дампі реєстру інформація про засновників і бенефіціарів з'явилась лише з 16 серпня 2017 року.") }}">{{ _("Інформація відсутня") }}</span>
-                                                        {% endif %}
+                                                    {% if group.finish_revision.pk < 154423 %}
+                                                    <span data-toggle="tooltip" data-placement="bottom" title="{{ _("Це не значить, що у компанії не було засновника. Але у публічному дампі реєстру інформація про засновників і бенефіціарів з'явилась лише з 16 серпня 2017 року.") }}">{{ _("Інформація відсутня") }}</span>
+                                                    {% endif %}
                                                     {% endfor %}
                                                 </td>
                                                 <td>
                                                     {% for p in group.record if p.person_type == "owner" %}
-                                                        {{ render_person(p, False) }}<br/>
+                                                    {{ render_person(p, False) }}<br/>
                                                     {% else %}
-                                                        {% if group.finish_revision.pk < 154423 %}
-                                                        <span data-toggle="tooltip" data-placement="bottom" title="{{ _("Це не значить, що у компанії не було засновника. Але у публічному дампі реєстру інформація про засновників і бенефіціарів з'явилась лише з 16 серпня 2017 року.") }}">{{ _("Інформація відсутня") }}</span>
-                                                        {% endif %}
+                                                    {% if group.finish_revision.pk < 154423 %}
+                                                    <span data-toggle="tooltip" data-placement="bottom" title="{{ _("Це не значить, що у компанії не було засновника. Але у публічному дампі реєстру інформація про засновників і бенефіціарів з'явилась лише з 16 серпня 2017 року.") }}">{{ _("Інформація відсутня") }}</span>
+                                                    {% endif %}
                                                     {% endfor %}
                                                 </td>
                                             </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </li>
-                        {% endfor %}
-                    </ul>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
