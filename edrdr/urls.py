@@ -10,7 +10,8 @@ from django.conf.urls.i18n import i18n_patterns
 from django.views.decorators.cache import cache_page
 
 from companies.views import (
-    CompanyDetail, RevisionDetail, SuggestView, HomeView, SearchView
+    CompanyDetail, RevisionDetail, SuggestView, HomeView, SearchView,
+    AboutSearchView, AboutAPIView
 )
 
 from companies.sitemaps import sitemaps
@@ -18,6 +19,8 @@ from companies.sitemaps import sitemaps
 
 urlpatterns = i18n_patterns(
     path('', HomeView.as_view(), name="home"),
+    path('about_search', AboutSearchView.as_view(), name="about_search"),
+    path('api', AboutAPIView.as_view(), name="about_api"),
     path('search', SearchView.as_view(), name="search>results"),
     path('search/suggest', SuggestView.as_view(), name="search>suggest"),
     path('company/<int:pk>', CompanyDetail.as_view(), name='company>detail'),

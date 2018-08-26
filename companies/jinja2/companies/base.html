@@ -24,7 +24,6 @@
         <meta property="og:site_name" content="Відкритий реєстр юридичних осіб" />
         <meta property="og:description" content="Єдиний державний реєстр юридичних осіб. З хронологією змін. Безкоштовно, без капчі та реєстрації." />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="" />
         <meta property="og:image" content="" />
 
         {% block head %}
@@ -144,13 +143,13 @@
                             </a>
                           </li>
                           <li>
-                            <a href="/">
+                            <a href="{{ url("about_search") }}">
                               <i class="si si-magnifier-add"></i>
                               <span class="sidebar-mini-hide">Інструкція з пошуку</span>
                             </a>
                           </li>
                           <li>
-                            <a href="/">
+                            <a href="{{ url("about_api") }}">
                               <i class="si si-magic-wand"></i>
                               <span class="sidebar-mini-hide">Відкритий API</span>
                             </a>

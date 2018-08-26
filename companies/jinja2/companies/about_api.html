@@ -1,0 +1,25 @@
+{% extends "companies/base.html" %}
+
+{% block site_title %}Відкритий API - державний реєстр юросіб{% endblock %}
+
+{% block body_class %}page-company{% endblock %}
+{% block container_class %}sidebar-o sidebar-inverse side-scroll main-content-narrow page-header-fixed page-header-inverse{% endblock %}
+
+{% block content %}
+    <!-- Feature: Powerful Layout -->
+    <div class="bg-white section-2">
+        <div class="content">
+            <div class="pb-50">
+                <h3 class="h1 font-w700 text-center mb-10">
+                    {{ _("Відкритий API...") }}
+                </h3>
+                <div class="row nice-copy my-10">
+                    <div class="col-md-12 py-20">
+                    	<p>{{ _("Знаходиться у стадії альфа-тестування, але вже скоро буде запущений.") }}</p>
+                        <p>{{ _("Напишіть нам на") }} <a href="mailto:NG@bihus.info">NG@bihus.info</a>, {{ _("якщо хочете стати бета-тестувальником.")}}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

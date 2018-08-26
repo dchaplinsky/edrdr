@@ -32,7 +32,7 @@ def environment(**options):
     )
 
     env.filters.update({
-        'datetime': lambda dt: formats.date_format(dt, "DATETIME_FORMAT"),
+        'datetime': lambda dt: formats.date_format(dt, "DATE_FORMAT"),
         'title': title,
         'uk_plural': ukr_plural,
         'curformat': curformat,

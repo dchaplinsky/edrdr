@@ -229,7 +229,7 @@ class SuggestView(View):
                     boost=2
                 )
             ]
-        )[:200]
+        )[:150]
 
         res = s.execute()
 
@@ -242,7 +242,7 @@ class SuggestView(View):
 
         ms = MultiSearch()
 
-        for sugg in suggestions[:20]:
+        for sugg in suggestions[:10]:
             q = strip_tags(sugg)
             ms = ms.add(ElasticCompany.search().query(
                 "match_phrase",
@@ -280,6 +280,14 @@ class HomeView(TemplateView):
         return context
 
 
+class AboutSearchView(TemplateView):
+    template_name = "companies/about_search.html"
+
+
+class AboutAPIView(TemplateView):
+    template_name = "companies/about_api.html"
+
+
 class SearchView(TemplateView):
     template_name = "companies/search.html"
 
@@ -289,7 +297,7 @@ class SearchView(TemplateView):
         query = request.GET.get("q", "")
         search_type = request.GET.get("search_type", "strict")
         is_addr = request.GET.get("is_addr", "false") == "true"
-        if search_type not in ["strict", "loose", "fuzzy"]:
+        if search_type not in ["strict", "loose"]:
             search_type = "strict"
 
         if query:
@@ -308,15 +316,6 @@ class SearchView(TemplateView):
                         "slop": 6
                     }
                 )
-
-                fuzzy_query = ElasticCompany.search().query(
-                    "match",
-                    all={
-                        "query": query,
-                        "operator": "and",
-                        "fuzziness": "auto"
-                    }
-                )
             else:
                 no_zip_q = re.sub(r"\b\d{5,}\W", "", query)
                 strict_query = ElasticCompany.search().query(
@@ -327,15 +326,6 @@ class SearchView(TemplateView):
                     }
                 )
 
-                fuzzy_query = ElasticCompany.search().query(
-                    "match",
-                    addresses={
-                        "query": no_zip_q,
-                        "operator": "or",
-                        "minimum_should_match": "-10%",
-                        "fuzziness": "auto"
-                    }
-                )
 
             loose_query = ElasticCompany.search().query(
                 "match",
@@ -349,17 +339,12 @@ class SearchView(TemplateView):
             ms = MultiSearch()
             ms = ms.add(strict_query[:0])
             ms = ms.add(loose_query[:0])
-            ms = ms.add(fuzzy_query[:0])
-            sc, lc, fc = ms.execute()
+            sc, lc = ms.execute()
 
             strict_count = sc.hits.total
             loose_count = lc.hits.total
-            fuzzy_count = fc.hits.total
 
-            if search_type == "fuzzy":
-                base_qs = fuzzy_query
-                base_count = fuzzy_count
-            elif search_type == "loose":
+            if search_type == "loose":
                 base_qs = loose_query
                 base_count = loose_count
             else:
@@ -370,7 +355,7 @@ class SearchView(TemplateView):
         else:
             qs = ElasticCompany.search().query('match_all')
 
-            base_count = fuzzy_count = loose_count = strict_count = qs.count()
+            base_count = loose_count = strict_count = qs.count()
 
         results = qs.highlight_options(
             order='score',
@@ -403,7 +388,6 @@ class SearchView(TemplateView):
             "search_type": search_type,
             "strict_count": strict_count,
             "loose_count": loose_count,
-            "fuzzy_count": fuzzy_count,
             "base_count": base_count,
         })
 

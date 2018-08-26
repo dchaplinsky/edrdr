@@ -6,6 +6,10 @@
 {% block body_class %}front{% endblock %}
 {% block container_class %}main-content-narrow{% endblock %}
 
+{% block head %}
+    <meta property="og:url" content="{{ SITE_URL }}" />
+{% endblock %}
+
 {% block content %}
     <!-- Hero -->
     <div class="bg-image" style="background-image: url({{ static('img/photos/index2.jpg') }});">
@@ -19,7 +23,7 @@
                                 </svg>
                             </span>Ring<span class="text-primary">/EDR</span>
                     </h1>
-                    <h2 class="font-w400 mb-50 invisible" data-toggle="appear" data-class="animated fadeInDown">Єдиний державний реєстр компаній - без капчі і реєстрації. З АРІ і пошуком</h2>
+                    <h2 class="font-w400 mb-50 invisible" data-toggle="appear" data-class="animated fadeInDown">{{ _("Єдиний державний реєстр компаній - без капчі і реєстрації. З АРІ і пошуком" )}}</h2>
                     <form class="searchform push col-sm-6 ml-auto mr-auto" action="{{ url('search>results') }}" method="get" _lpchecked="1">
                         <div class="input-group input-group-lg">
                             <input type="text" class="form-control search-form-q" name="q" data-provide="typeahead" id="search-form" placeholder="{{ _("Пошук") }}" data-endpoint="{{ url("search>suggest") }}">
@@ -29,14 +33,13 @@
                                 </button>
                             </div>
                         </div>
-                        <p>Наприклад: Рошен, Ромашко Роман Петрович, ПП "РОМДІРОМ", 37504544 </p>
+                        <p>{{ _("Наприклад: Рошен, Ромашко Роман Петрович, ПП \"РОМДІРОМ\", 37504544") }}</p>
                     </form>
                 </div>
                 <div class="js-countdown mb-20 col-md-8 ml-auto mr-auto">
                     <div class="row items-push text-center">
                         <div class="col-6 col-sm-3">
                             <div class="font-size-h1 font-w700 text-white">{{ num_of_companies|curformat }}</div>
-                            {# "помічник,помічника,помічників" #}
                             <div class="font-size-xs font-w700 text-white-op">{{ num_of_companies|uk_plural(_("КОМПАНІЯ"), _("КОМПАНІЇ"), _("КОМПАНІЙ")) }}</div>
                         </div>
                         <div class="col-6 col-sm-3">
@@ -63,30 +66,28 @@
         <div class="content">
             <div class="pb-50">
                 <h3 class="h1 font-w700 text-center mb-10">
-                    Чому ми? <span class="text-primary">Канцелярська сотня рекомендує:</span>
+                    {{ _("Чому ми?") }} <span class="text-primary">{{ _("Канцелярська сотня рекомендує:") }}</span>
                 </h3>
-                <h4 class="h3 font-w400 text-muted text-center mb-30">Лише офіційні дані, історія усіх компаній України, поглиблений пошук, зручний дизайн</h4>
+                <h4 class="h3 font-w400 text-muted text-center mb-30">{{ _("Лише офіційні дані, історія усіх компаній України, поглиблений пошук, зручний дизайн") }}</h4>
                 <hr>
                 <div class="row nice-copy my-10">
                     <div class="col-md-4 py-20">
                         <h4 class="font-size-xl font-w700 text-uppercase mb-10">
-                            <img class="no-shadow" width="20" src="{{ static('img/ua.svg') }}" /> Офіційність
+                            <img class="no-shadow" width="20" src="{{ static('img/ua.svg') }}" /> {{ _("Офіційність") }}
                         </h4>
-                        <p class="mb-0">Усі дані офіційно отримані з Державного реєстру юридичних осіб та фізичних осіб-підприємців.
-                            Дані оновлюються щотижнево і охоплюють період понад два роки.</p>
+                        <p class="mb-0">{{ _("Усі дані офіційно отримані з Державного реєстру юридичних осіб та фізичних осіб-підприємців. Дані оновлюються щотижнево і охоплюють період понад два роки.") }}</p>
                     </div>
                     <div class="col-md-4 py-20">
                         <h4 class="font-size-xl font-w700 text-uppercase mb-10">
-                            <i class="fa fa-refresh text-earth mr-5"></i> Відкритість і доступність
+                            <i class="fa fa-refresh text-earth mr-5"></i> {{ _("Відкритість і доступність") }}
                         </h4>
-                        <p class="mb-0">Усе безкоштовно. Жодних реєстрацій. Жодної капчі (вони бісять). Зручні таймлайни змін в компаніях - для всіх.
-                            Відкритий і безкоштовний АРІ для тих, хто знає, що з ним робити.</p>
+                        <p class="mb-0">{{ _("Усе безкоштовно. Жодних реєстрацій. Жодної капчі (вони бісять). Зручні таймлайни змін в компаніях - для всіх. Відкритий і безкоштовний АРІ для тих, хто знає, що з ним робити.") }}</p>
                     </div>
                     <div class="col-md-4 py-20">
                         <h4 class="font-size-xl font-w700 text-uppercase mb-10">
-                            <i class="fa fa-bolt text-danger mr-5"></i> Інтелект та гнучкість
+                            <i class="fa fa-bolt text-danger mr-5"></i> {{ _("Інтелект та гнучкість") }}
                         </h4>
-                        <p class="mb-0">Поглиблений пошук. Враховані перейменування вулиць - шукайте так, як знаєте. Автодоповнення, врахування помилок в прізвищах. Магія.</p>
+                        <p class="mb-0">{{ _("Поглиблений пошук. Враховані перейменування вулиць - шукайте так, як знаєте. Автодоповнення, врахування помилок в прізвищах. Магія.") }}</p>
                     </div>
                 </div>
             </div>

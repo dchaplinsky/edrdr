@@ -5,9 +5,10 @@
 
 {% block head %}
     <link rel="canonical" href="{{ SITE_URL }}{{ latest_record.company.get_absolute_url() }}" />
+    <meta property="og:url" content="{{ SITE_URL }}{{ latest_record.company.get_absolute_url() }}" />
 {% endblock %}
 
-{% block site_title %}{{ latest_record.name }} - {{ latest_record.company.full_edrpou }} - державний реєстр юросіб{% endblock %}
+{% block site_title %}{{ latest_record.name }} - {{ latest_record.company.full_edrpou }} - {{ _("державний реєстр юросіб") }}{% endblock %}
 
 {% macro render_person(person, show_person_type=True) %}
     <span itemprop="{% if person.person_type != "head" %}founder{% else %}employee{% endif%}" itemscope="" itemtype="http://schema.org/Person">
@@ -70,7 +71,7 @@
         <div class="bg-pattern bg-black-op-25" style="background-image: url({{ static("img/various/bg-pattern.jpg") }});">
             <div class="content content-top text-center">
                 <div class="mb-50">
-                    <h1 class="font-w700 text-white mb-10"><span itemprop="legalName">{{ latest_record.name }}</span> (<span  itemprop="taxID">{{latest_record.company.full_edrpou }}</span>)</h1>
+                    <h1 class="font-w700 text-white mb-10"><span itemprop="legalName">{{ latest_record.name }}</span> (<span  itemprop="taxID">{{ latest_record.company.full_edrpou }}</span>)</h1>
                     {% if latest_record.short_name and latest_record.short_name|lower != "немає" %}
                     <h2 class="h4 font-w400 text-white-op" itemprop="name">{{ latest_record.short_name }}</h2>
                     {% endif %}
@@ -83,7 +84,7 @@
         <div class="block-header block-header-default bg-transparent content">
             <div class="block-options">
                 <button type="button" class="btn-block-option" onclick="Edrdr.helpers('print-page');">
-                    <i class="si si-printer"></i> Друкувати
+                    <i class="si si-printer"></i> {{ _("Друкувати") }}
                 </button>
             </div>
         </div>
@@ -151,7 +152,7 @@
                             </div>
                         </li>
                     </ul>
-                    {% for group in grouped_company_records %}
+                    {% for group in grouped_company_records|reverse %}
                     <div class="block-content tab-content pl-0 pr-0">
                         <div class="tab-pane active show anchor-offset" id="company-history" role="tabpanel">
                             <ul class="cbp_tmtimeline">
@@ -161,8 +162,8 @@
                                     {% if group.start_revision == group.finish_revision %}
                                         <a href="{{ group.start_revision.get_absolute_url() }}">{{ group.start_revision.created|datetime }}</a>
                                     {% else %}
-                                        <a href="{{ group.start_revision.get_absolute_url() }}">{{ group.start_revision.created|datetime }}</a>—<br/>
-                                        <a href="{{ group.finish_revision.get_absolute_url() }}">{{ group.finish_revision.created|datetime }}</a>
+                                        <a href="{{ group.finish_revision.get_absolute_url() }}">{{ group.finish_revision.created|datetime }}</a>—<br/>
+                                        <a href="{{ group.start_revision.get_absolute_url() }}">{{ group.start_revision.created|datetime }}</a>
                                     {% endif %}
                                 </span>
                                     </time>
@@ -212,15 +213,15 @@
                     <div class="block-content tab-content pl-0 pr-0">
                         <div class="tab-pane active show anchor-offset" id="seo-history" role="tabpanel">
                             <ul class="cbp_tmtimeline">
-                                {% for group in grouped_persons_records %}
+                                {% for group in grouped_persons_records|reverse %}
                                 <li>
                                     <time class="cbp_tmtime" datetime="">
                                 <span>
                                     {% if group.start_revision == group.finish_revision %}
                                         <a href="{{ group.start_revision.get_absolute_url() }}">{{ group.start_revision.created|datetime }}</a>
                                     {% else %}
-                                        <a href="{{ group.start_revision.get_absolute_url() }}">{{ group.start_revision.created|datetime }}</a>—<br/>
-                                        <a href="{{ group.finish_revision.get_absolute_url() }}">{{ group.finish_revision.created|datetime }}</a>
+                                        <a href="{{ group.finish_revision.get_absolute_url() }}">{{ group.finish_revision.created|datetime }}</a>—<br/>
+                                        <a href="{{ group.start_revision.get_absolute_url() }}">{{ group.start_revision.created|datetime }}</a>
                                     {% endif %}
                                 </span>
                                     </time>

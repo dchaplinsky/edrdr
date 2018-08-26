@@ -1,0 +1,24 @@
+{% extends "companies/base.html" %}
+
+{% block body_class %}page-company{% endblock %}
+{% block container_class %}sidebar-o sidebar-inverse side-scroll main-content-narrow page-header-fixed page-header-inverse{% endblock %}
+
+{% block site_title %}{{ _("Як користуватися пошуком по компаніям, їх керівникам та власникам - державний реєстр юросіб") }}{% endblock %}
+
+{% block content %}
+    <!-- Feature: Powerful Layout -->
+    <div class="bg-white section-2">
+        <div class="content">
+            <div class="pb-50">
+                <h3 class="h1 font-w700 text-center mb-10">
+                    {{ _("Як користуватися пошуком") }}
+                </h3>
+                <div class="row nice-copy my-10">
+                    <div class="col-md-12 py-20">
+                    	<p>{{ _("Дуже легко!") }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
