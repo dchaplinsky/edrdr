@@ -243,7 +243,6 @@ class SuggestView(View):
         ms = MultiSearch()
 
         for sugg in suggestions[:10]:
-            q = strip_tags(sugg)
             ms = ms.add(ElasticCompany.search().query(
                 "match_phrase",
                 all={
@@ -251,16 +250,17 @@ class SuggestView(View):
                 }
             ).source(["latest_record", "full_edrpou", "companies", "latest_record"])[:1])
 
-
-        rendered_result = [
-            render_to_string("companies/autocomplete.html", {
-                "result": {
-                    "hl": k,
-                    "company": company
-                }
-            })
-            for k, company in zip(suggestions[:20], ms.execute())
-        ]
+        rendered_result = []
+        if suggestions:
+            rendered_result = [
+                render_to_string("companies/autocomplete.html", {
+                    "result": {
+                        "hl": k,
+                        "company": company
+                    }
+                })
+                for k, company in zip(suggestions[:20], ms.execute())
+            ]
 
         return JsonResponse(rendered_result, safe=False)
 
