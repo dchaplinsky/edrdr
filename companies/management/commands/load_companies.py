@@ -252,9 +252,19 @@ class Command(BaseCommand):
         )
 
         parser.add_argument(
+            "--local_file",
+            help="Load data from a local file"
+        )
+
+        parser.add_argument(
             "--parser_profile",
             default="pipeline.yaml",
             help="Pipeline configuration file"
+        )
+
+        parser.add_argument(
+            "--timestamp",
+            help="Local file timestamp"
         )
 
     def make_key_for_company(self, company):
@@ -306,7 +316,7 @@ class Command(BaseCommand):
             .encode("utf8")
         ).hexdigest()
 
-    def handle_one_revision(self, guid, dataset_info, overwrite=False, revision=None):
+    def handle_one_revision_from_old_data_gov(self, guid, dataset_info, overwrite=False, revision=None):
         """
         Process one revision: retrieved from data.gov.ua, parse, unify, load to DB
         """
@@ -361,6 +371,10 @@ class Command(BaseCommand):
             with open(full_path, 'wb') as f:
                 shutil.copyfileobj(r.raw, f)
 
+        load_file(full_path, guid, revision, timestamp, overwrite, ext, dump["url"])
+
+
+    def load_file(self, full_path, guid, revision, timestamp, overwrite, ext, url=""):
         with open(full_path, 'rb') as fp:
             # At first, let's try to create Revision. Revision is a single dump
             # file retrieved from data.gov.ua. Revision id is unique even across
@@ -370,7 +384,7 @@ class Command(BaseCommand):
                 defaults={
                     "dataset_id": guid,
                     "created": timestamp,
-                    "url": dump["url"]
+                    "url": url
                 }
             )
 
@@ -668,33 +682,46 @@ class Command(BaseCommand):
         self.redis = redis.StrictRedis.from_url(settings.PARSING_REDIS)
         self.redis_cache_key = "extractor_{}".format(self.pipe.config_key)
 
-        if options["guid"] == "all":
-            logger.info("Retrieving all datasets we know about")
-            guids = ["73cfe78e-89ef-4f06-b3ab-eb5f16aea237", "5fc89a6f-55b8-4ec6-95d6-38a0fdc31be1"]
+        if options["local_file"]:
+            _, ext = os.path.splitext(options["local_file"])
+
+            self.load_file(
+                options["local_file"],
+                options["guid"],
+                options["revision"],
+                parse(options["timestamp"], dayfirst=True),
+                options["overwrite"],
+                ext,
+                url=""
+            )
         else:
-            guids = [options["guid"]]
-
-        # Retrieving all the datasets we know about
-        for guid in tqdm(guids):
-            dataset_info = requests.get(
-                "http://data.gov.ua/view-dataset/dataset.json",
-                {"dataset-id": guid, "cachebuster": randrange(10)},
-                proxies=proxies
-            ).json()
-
-            if options["revision"] is None:
-                revisions = [dataset_info["revision_id"]]
-            elif options["revision"] == "all":
-                revisions = [dataset_info["revision_id"]] + list(
-                    x["revision_id"] for x in dataset_info["revisions"]
-                )
-                logger.info("Retrieving all {} revisions for dataset {}".format(
-                    len(revisions), guid
-                ))
+            if options["guid"] == "all":
+                logger.info("Retrieving all datasets we know about")
+                guids = ["73cfe78e-89ef-4f06-b3ab-eb5f16aea237", "5fc89a6f-55b8-4ec6-95d6-38a0fdc31be1"]
             else:
-                revisions = [options["revision"]]
+                guids = [options["guid"]]
 
-            for r in tqdm(revisions):
-                sleep(5)
-                # Revision by revision
-                self.handle_one_revision(guid, dataset_info, options["overwrite"], revision=r)
+            # Retrieving all the datasets we know about
+            for guid in tqdm(guids):
+                dataset_info = requests.get(
+                    "http://data.gov.ua/view-dataset/dataset.json",
+                    {"dataset-id": guid, "cachebuster": randrange(10)},
+                    proxies=proxies
+                ).json()
+
+                if options["revision"] is None:
+                    revisions = [dataset_info["revision_id"]]
+                elif options["revision"] == "all":
+                    revisions = [dataset_info["revision_id"]] + list(
+                        x["revision_id"] for x in dataset_info["revisions"]
+                    )
+                    logger.info("Retrieving all {} revisions for dataset {}".format(
+                        len(revisions), guid
+                    ))
+                else:
+                    revisions = [options["revision"]]
+
+                for r in tqdm(revisions):
+                    sleep(5)
+                    # Revision by revision
+                    self.handle_one_revision_from_old_data_gov(guid, dataset_info, options["overwrite"], revision=r)
