@@ -80,7 +80,7 @@ class Command(LoadCommand):
                 shutil.copyfileobj(r.raw, f)
 
         with open(full_path, "rb") as fp:
-            load_file(
+            self.load_file(
                 fp,
                 guid,
                 None,

@@ -372,7 +372,7 @@ class Command(BaseCommand):
                 shutil.copyfileobj(r.raw, f)
 
         with open(full_path, 'rb') as fp:
-            load_file(fp, guid, revision, timestamp, overwrite, ext=ext, url=data_url)
+            self.load_file(fp, guid, revision, timestamp, overwrite, ext=ext, url=data_url)
 
 
     def load_file(self, fp, guid, revision_id, timestamp, overwrite, ext, subrevision_id=None, url=""):
