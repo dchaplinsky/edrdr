@@ -7,15 +7,14 @@ from django.forms.models import model_to_dict
 from tokenize_uk import tokenize_words
 from companies.exceptions import StatusDoesntExist
 
-from names_translator.name_utils import (
-    parse_and_generate,
-    autocomplete_suggestions
-)
-
+from names_translator.name_utils import parse_and_generate, autocomplete_suggestions
 
 
 class Revision(models.Model):
-    revision_id = models.IntegerField("Номер ревізії", primary_key=True)
+    revision_id = models.AutoField("Номер ревізії", primary_key=True)
+    subrevision_id = models.CharField(
+        "Дурна ревізія з нового сайту data.gov.ua", max_length=20, default=""
+    )
     dataset_id = models.TextField("Датасет")
     created = models.DateTimeField("Дата створення")
     imported = models.BooleanField("Імпорт завершено", default=False)
@@ -23,21 +22,22 @@ class Revision(models.Model):
     url = models.URLField("Посилання на набір данних")
 
     def get_absolute_url(self):
-        return reverse('revision>detail', kwargs={'pk': self.pk})
+        return reverse("revision>detail", kwargs={"pk": self.pk})
 
 
 class Company(models.Model):
     edrpou = models.IntegerField(primary_key=True)
     last_modified = models.DateTimeField(auto_now=True)
     is_dirty = models.BooleanField(
-        "Потребує повторної індексації", db_index=True, default=True)
+        "Потребує повторної індексації", db_index=True, default=True
+    )
 
     @property
     def full_edrpou(self):
         return str(self.pk).rjust(8, "0")
 
     def get_absolute_url(self):
-        return reverse('company>detail', kwargs={'pk': self.full_edrpou})
+        return reverse("company>detail", kwargs={"pk": self.full_edrpou})
 
     def to_dict(self):
         addresses = set()
@@ -53,8 +53,11 @@ class Company(models.Model):
 
         latest_record = None
         latest_revision = 0
-        for company_record in self.records.all().defer(
-                "company_hash", "location_parsing_quality").nocache():
+        for company_record in (
+            self.records.all()
+            .defer("company_hash", "location_parsing_quality")
+            .nocache()
+        ):
             addresses.add(company_record.location)
             addresses.add(company_record.parsed_location)
             addresses.add(company_record.validated_location)
@@ -72,12 +75,11 @@ class Company(models.Model):
                 latest_record = company_record
                 latest_revision = max(company_record.revisions)
 
-        for person in self.persons.all().defer(
-                "tokenized_record", "share", "revisions").nocache():
+        for person in (
+            self.persons.all().defer("tokenized_record", "share", "revisions").nocache()
+        ):
             for name in person.name:
-                persons.add(
-                    (name, person.get_person_type_display())
-                )
+                persons.add((name, person.get_person_type_display()))
 
                 for addr in person.address:
                     addresses.add(addr)
@@ -120,13 +122,19 @@ class CompanyRecord(models.Model):
         8: _("ліквідація"),
     }
 
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="records")
-    company_hash = models.CharField("Ключ дедуплікації", max_length=40, primary_key=True)
+    company = models.ForeignKey(
+        Company, on_delete=models.CASCADE, related_name="records"
+    )
+    company_hash = models.CharField(
+        "Ключ дедуплікації", max_length=40, primary_key=True
+    )
     name = models.TextField("Назва компанії")
     short_name = models.TextField("Скорочена назва компанії", blank=True)
     location = models.TextField("Адреса реєстрації", blank=True)
     company_profile = models.TextField("Основний вид діяльності", blank=True)
-    status = models.IntegerField(choices=COMPANY_STATUSES.items(), verbose_name="Статус компанії")
+    status = models.IntegerField(
+        choices=COMPANY_STATUSES.items(), verbose_name="Статус компанії"
+    )
     revisions = ArrayField(models.IntegerField(), default=list, verbose_name="Ревізії")
 
     location_postal_code = models.CharField("Індекс", max_length=40, default="")
@@ -134,15 +142,29 @@ class CompanyRecord(models.Model):
     location_locality = models.CharField("Місто", max_length=100, default="")
     location_district = models.CharField("Район", max_length=100, default="")
     location_street_address = models.CharField("Вулиця/дім", max_length=200, default="")
-    location_apartment = models.CharField("Квартира/офіс/кімната", max_length=100, default="")
+    location_apartment = models.CharField(
+        "Квартира/офіс/кімната", max_length=100, default=""
+    )
     location_parsing_quality = models.FloatField("Якість парсингу адреси", default=0)
 
-    validated_location_postal_code = models.CharField("Валідований Індекс", max_length=40, default="")
-    validated_location_region = models.CharField("Валідований Регіон", max_length=100, default="")
-    validated_location_locality = models.CharField("Валідоване Місто", max_length=100, default="")
-    validated_location_district = models.CharField("Валідований Район", max_length=100, default="")
-    validated_location_street_address = models.CharField("Валідована Вулиця/дім", max_length=200, default="")
-    validated_location_apartment = models.CharField("Валідована Квартира/офіс/кімната", max_length=100, default="")
+    validated_location_postal_code = models.CharField(
+        "Валідований Індекс", max_length=40, default=""
+    )
+    validated_location_region = models.CharField(
+        "Валідований Регіон", max_length=100, default=""
+    )
+    validated_location_locality = models.CharField(
+        "Валідоване Місто", max_length=100, default=""
+    )
+    validated_location_district = models.CharField(
+        "Валідований Район", max_length=100, default=""
+    )
+    validated_location_street_address = models.CharField(
+        "Валідована Вулиця/дім", max_length=200, default=""
+    )
+    validated_location_apartment = models.CharField(
+        "Валідована Квартира/офіс/кімната", max_length=100, default=""
+    )
 
     @classmethod
     def get_status(cls, status):
@@ -164,36 +186,39 @@ class CompanyRecord(models.Model):
     @property
     def parsed_location(self):
         return ", ".join(
-            filter(None, [
-                self.location_postal_code,
-                self.location_region,
-                self.location_district,
-                self.location_locality,
-                self.location_street_address,
-                self.location_apartment
-            ])
+            filter(
+                None,
+                [
+                    self.location_postal_code,
+                    self.location_region,
+                    self.location_district,
+                    self.location_locality,
+                    self.location_street_address,
+                    self.location_apartment,
+                ],
+            )
         )
 
     @property
     def validated_location(self):
         return ", ".join(
-            filter(None, [
-                self.validated_location_postal_code,
-                self.validated_location_region,
-                self.validated_location_district,
-                self.validated_location_locality,
-                self.validated_location_street_address,
-                self.validated_location_apartment
-            ])
+            filter(
+                None,
+                [
+                    self.validated_location_postal_code,
+                    self.validated_location_region,
+                    self.validated_location_district,
+                    self.validated_location_locality,
+                    self.validated_location_street_address,
+                    self.validated_location_apartment,
+                ],
+            )
         )
 
     def to_dict(self):
-        dct = model_to_dict(self, fields=[
-            "name",
-            "short_name",
-            "location",
-            "company_profile",
-        ])
+        dct = model_to_dict(
+            self, fields=["name", "short_name", "location", "company_profile"]
+        )
 
         dct["status"] = self.get_status_display()
         return dct
@@ -209,13 +234,17 @@ class Person(models.Model):
         "owner": _("Бенефіціарний власник"),
     }
     name = ArrayField(models.TextField(), default=[], verbose_name="Імена")
-    person_hash = models.TextField(
-        "Ключ дедуплікації", primary_key=True,
-    )
+    person_hash = models.TextField("Ключ дедуплікації", primary_key=True)
 
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name="Компанія",
-                                related_name="persons")
-    person_type = models.CharField(max_length=10, choices=PERSON_TYPES.items(), db_index=True)
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        verbose_name="Компанія",
+        related_name="persons",
+    )
+    person_type = models.CharField(
+        max_length=10, choices=PERSON_TYPES.items(), db_index=True
+    )
     address = ArrayField(models.TextField(), default=[], verbose_name="Адреси")
     country = ArrayField(models.TextField(), default=[], verbose_name="Країни")
     raw_record = models.TextField(blank=True, verbose_name="Оригінал запису")

@@ -371,255 +371,269 @@ class Command(BaseCommand):
             with open(full_path, 'wb') as f:
                 shutil.copyfileobj(r.raw, f)
 
-        load_file(full_path, guid, revision, timestamp, overwrite, ext, dump["url"])
-
-
-    def load_file(self, full_path, guid, revision, timestamp, overwrite, ext, url=""):
         with open(full_path, 'rb') as fp:
-            # At first, let's try to create Revision. Revision is a single dump
-            # file retrieved from data.gov.ua. Revision id is unique even across
-            # different datasets
+            load_file(fp, guid, revision, timestamp, overwrite, ext=ext, url=data_url)
+
+
+    def load_file(self, fp, guid, revision_id, timestamp, overwrite, ext, subrevision_id=None, url=""):
+        # At first, let's try to create Revision. Revision is a single dump
+        # file retrieved from data.gov.ua. Revision id is unique even across
+        # different datasets
+
+
+        if revision is not None:
             revision, revision_created = Revision.objects.get_or_create(
-                pk=revision,
+                pk=revision_id,
                 defaults={
                     "dataset_id": guid,
                     "created": timestamp,
                     "url": url
                 }
             )
-
-            # If it's already in database and marked as fully imported we skip it
-            # unless overwrite flag is set to True
-            if revision.imported and not overwrite:
-                logger.warning("Revision {}, file {} was already imported successfully, skipping".format(
-                    revision.revision_id, revision.url))
-                return
-
-            reader = EDR_Reader(fp, timestamp, revision, ext.lower().lstrip("."))
-            # To avoid hitting DB we first will pre-cache ids of companies and company records in db
-            # Where company is an entity, and the company record is the state of that entity in a given period
-            # of time
-            companies_in_bd = set(Company.objects.values_list("pk", flat=True))
-            company_records_in_bd = set(CompanyRecord.objects.values_list("company_hash", flat=True))
-
-            # list of company records where current revision is already set
-            company_records_with_no_revision = set(
-                CompanyRecord.objects.filter(revisions__contains=[revision.pk]).values_list("company_hash", flat=True)
+        elif subrevision_id is not None:
+            revision, revision_created = Revision.objects.get_or_create(
+                subrevision_id=subrevision_id,
+                defaults={
+                    "dataset_id": guid,
+                    "created": timestamp,
+                    "url": url
+                }
             )
+        else:
+            return
 
-            # Accumulator for the company records to set current revision in bulk
-            company_records_to_add_revision = []
+        # If it's already in database and marked as fully imported we skip it
+        # unless overwrite flag is set to True
+        if revision.imported and not overwrite:
+            logger.warning("Revision {}, file {} was already imported successfully, skipping".format(
+                revision.revision_id, revision.url))
+            return
 
-            # List of persons that is already in db
-            persons_in_bd = set(Person.objects.values_list("person_hash", flat=True))
-            # list of persons where current revision is already set
-            persons_with_no_revision = set(
-                Person.objects.filter(revisions__contains=[revision.pk]).values_list("person_hash", flat=True)
-            )
-            # Accumulator for the persons to set current revision in bulk
-            persons_to_add_revision = []
+        reader = EDR_Reader(fp, timestamp, revision, ext.lower().lstrip("."))
+        # To avoid hitting DB we first will pre-cache ids of companies and company records in db
+        # Where company is an entity, and the company record is the state of that entity in a given period
+        # of time
+        companies_in_bd = set(Company.objects.values_list("pk", flat=True))
+        company_records_in_bd = set(CompanyRecord.objects.values_list("company_hash", flat=True))
 
-            # Accumulator for the companies to create in bulk
-            companies_to_create = []
-            # Accumulator for the company records to create in bulk
-            company_records_to_create = []
+        # list of company records where current revision is already set
+        company_records_with_no_revision = set(
+            CompanyRecord.objects.filter(revisions__contains=[revision.pk]).values_list("company_hash", flat=True)
+        )
 
-            # Companies to mark for parsing/reindexing
-            dirty_companies = set()
+        # Accumulator for the company records to set current revision in bulk
+        company_records_to_add_revision = []
 
-            # Accumulator for the persons to create in bulk
-            persons_to_create = []
-            with tqdm() as pbar:
-                for company_line in reader.iter_docs():
-                    pbar.update(1)
+        # List of persons that is already in db
+        persons_in_bd = set(Person.objects.values_list("person_hash", flat=True))
+        # list of persons where current revision is already set
+        persons_with_no_revision = set(
+            Person.objects.filter(revisions__contains=[revision.pk]).values_list("person_hash", flat=True)
+        )
+        # Accumulator for the persons to set current revision in bulk
+        persons_to_add_revision = []
 
-                    # Basic sanity checks
-                    if company_line["edrpou"] == 0 or isinstance(company_line["edrpou"], str):
-                        continue
+        # Accumulator for the companies to create in bulk
+        companies_to_create = []
+        # Accumulator for the company records to create in bulk
+        company_records_to_create = []
 
-                    if company_line.get("head", ""):
-                        head_hash = self.make_key_for_person(
-                            company_line["edrpou"],
-                            company_line["head"],
-                            "head"
-                        )
-                        if head_hash not in persons_in_bd:
-                            person = Person(
-                                company_id=company_line["edrpou"],
-                                person_type="head",
-                                person_hash=head_hash,
-                                raw_record=company_line["head"],
-                                name=[company_line["head"]],
-                                revisions=[revision.pk],
-                            )
-                            persons_to_create.append(person)
-                            dirty_companies.add(company_line["edrpou"])
-                            persons_in_bd.add(head_hash)
-                        else:
-                            if head_hash not in persons_with_no_revision:
-                                persons_to_add_revision.append(head_hash)
-                                persons_with_no_revision.add(head_hash)
+        # Companies to mark for parsing/reindexing
+        dirty_companies = set()
 
-                    # Parsing founder records
-                    if company_line.get("founders"):
-                        founders = self.parse_raw_rec(company_line)
+        # Accumulator for the persons to create in bulk
+        persons_to_create = []
+        with tqdm() as pbar:
+            for company_line in reader.iter_docs():
+                pbar.update(1)
 
-                        for f in founders:
-                            if f["Is beneficial owner"]:
-                                # That's BO and we know a name
-                                if not f["BO is absent"] and f["Name"]:
-                                    bo_hash = self.make_key_for_person(
-                                        company_line["edrpou"],
-                                        f["raw_record"],
-                                        "owner"
-                                    )
+                # Basic sanity checks
+                if company_line["edrpou"] == 0 or isinstance(company_line["edrpou"], str):
+                    continue
 
-                                    if bo_hash not in persons_in_bd:
-                                        person = Person(
-                                            company_id=company_line["edrpou"],
-                                            person_type="owner",
-                                            person_hash=bo_hash,
-                                            raw_record=f["raw_record"],
-                                            name=f["Name"],
-                                            address=f["Address of residence"],
-                                            country=f["Country of residence"],
-                                            revisions=[revision.pk],
-                                        )
-                                        persons_to_create.append(person)
-                                        dirty_companies.add(company_line["edrpou"])
-                                        persons_in_bd.add(bo_hash)
-                                    else:
-                                        if bo_hash not in persons_with_no_revision:
-                                            persons_to_add_revision.append(bo_hash)
-                                            persons_with_no_revision.add(bo_hash)
-                            else:
-                                if f["Name"]:
-                                    founder_hash = self.make_key_for_person(
-                                        company_line["edrpou"],
-                                        f["raw_record"],
-                                        "owner"
-                                    )
-
-                                    if founder_hash not in persons_in_bd:
-                                        person = Person(
-                                            company_id=company_line["edrpou"],
-                                            person_hash=founder_hash,
-                                            person_type="founder",
-                                            raw_record=f["raw_record"],
-                                            name=f["Name"],
-                                            address=f["Address of residence"],
-                                            country=f["Country of residence"],
-                                            revisions=[revision.pk],
-                                        )
-                                        persons_to_create.append(person)
-                                        persons_in_bd.add(founder_hash)
-                                    else:
-                                        if founder_hash not in persons_with_no_revision:
-                                            persons_to_add_revision.append(founder_hash)
-                                            persons_with_no_revision.add(founder_hash)
-
-                    # If company is not in db yet, let's add it to the accum
-                    if company_line["edrpou"] not in companies_in_bd:
-                        companies_to_create.append(Company(edrpou=company_line["edrpou"]))
-                        dirty_companies.add(company_line["edrpou"])
-                        companies_in_bd.add(company_line["edrpou"])
-
-                    # Checking if such company record is already present in db
-                    company_record_hash = self.make_key_for_company(company_line)
-                    if company_record_hash not in company_records_in_bd:
-                        company_record = CompanyRecord(
-                            company_hash=company_record_hash,
+                if company_line.get("head", ""):
+                    head_hash = self.make_key_for_person(
+                        company_line["edrpou"],
+                        company_line["head"],
+                        "head"
+                    )
+                    if head_hash not in persons_in_bd:
+                        person = Person(
                             company_id=company_line["edrpou"],
-                            name=company_line["name"],
-                            short_name=company_line["short_name"] or "",
-                            location=company_line["location"] or "",
-                            company_profile=company_line.get("company_profile", "") or "",
-                            status=CompanyRecord.get_status(company_line.get("status", "інформація відсутня")),
-                            revisions=[revision.pk]
+                            person_type="head",
+                            person_hash=head_hash,
+                            raw_record=company_line["head"],
+                            name=[company_line["head"]],
+                            revisions=[revision.pk],
                         )
-
-                        # Adding that company into accum
-                        company_records_to_create.append(company_record)
+                        persons_to_create.append(person)
                         dirty_companies.add(company_line["edrpou"])
-                        # Ignoring that company record hash for the current revision
-                        company_records_in_bd.add(company_record_hash)
+                        persons_in_bd.add(head_hash)
                     else:
-                        if company_record_hash not in company_records_with_no_revision:
-                            company_records_to_add_revision.append(company_record_hash)
-                            company_records_with_no_revision.add(company_record_hash)
+                        if head_hash not in persons_with_no_revision:
+                            persons_to_add_revision.append(head_hash)
+                            persons_with_no_revision.add(head_hash)
 
-                    if len(companies_to_create) >= 10000 or len(persons_to_create) >= 10000:
-                        Company.objects.bulk_create(companies_to_create)
-                        CompanyRecord.objects.bulk_create(company_records_to_create)
-                        companies_to_create = []
-                        company_records_to_create = []
+                # Parsing founder records
+                if company_line.get("founders"):
+                    founders = self.parse_raw_rec(company_line)
 
-                        if company_records_to_add_revision:
-                            with connection.cursor() as cursor:
-                                # Fuck, cannot believe I'm doing that
-                                hashes_str = ",".join("'{}'".format(s) for s in company_records_to_add_revision)
-                                # Guess what? There are no support of adding something to PG arrays through django ORM
-                                cursor.execute(
-                                    "UPDATE " + CompanyRecord._meta.db_table + "  SET revisions = revisions || '{%s}' " +
-                                    "WHERE company_hash IN (" + hashes_str + ")",
-                                    [int(revision.pk)]
+                    for f in founders:
+                        if f["Is beneficial owner"]:
+                            # That's BO and we know a name
+                            if not f["BO is absent"] and f["Name"]:
+                                bo_hash = self.make_key_for_person(
+                                    company_line["edrpou"],
+                                    f["raw_record"],
+                                    "owner"
                                 )
 
-                            company_records_to_add_revision = []
-
-                    if len(persons_to_create) >= 10000:
-                        Person.objects.bulk_create(persons_to_create)
-                        persons_to_create = []
-
-                        if persons_to_add_revision:
-                            with connection.cursor() as cursor:
-                                hashes_str = ",".join("'{}'".format(s) for s in persons_to_add_revision)
-                                cursor.execute(
-                                    "UPDATE " + Person._meta.db_table + "  SET revisions = revisions || '{%s}' " +
-                                    "WHERE person_hash IN (" + hashes_str + ")",
-                                    [int(revision.pk)]
+                                if bo_hash not in persons_in_bd:
+                                    person = Person(
+                                        company_id=company_line["edrpou"],
+                                        person_type="owner",
+                                        person_hash=bo_hash,
+                                        raw_record=f["raw_record"],
+                                        name=f["Name"],
+                                        address=f["Address of residence"],
+                                        country=f["Country of residence"],
+                                        revisions=[revision.pk],
+                                    )
+                                    persons_to_create.append(person)
+                                    dirty_companies.add(company_line["edrpou"])
+                                    persons_in_bd.add(bo_hash)
+                                else:
+                                    if bo_hash not in persons_with_no_revision:
+                                        persons_to_add_revision.append(bo_hash)
+                                        persons_with_no_revision.add(bo_hash)
+                        else:
+                            if f["Name"]:
+                                founder_hash = self.make_key_for_person(
+                                    company_line["edrpou"],
+                                    f["raw_record"],
+                                    "owner"
                                 )
 
-                            persons_to_add_revision = []
+                                if founder_hash not in persons_in_bd:
+                                    person = Person(
+                                        company_id=company_line["edrpou"],
+                                        person_hash=founder_hash,
+                                        person_type="founder",
+                                        raw_record=f["raw_record"],
+                                        name=f["Name"],
+                                        address=f["Address of residence"],
+                                        country=f["Country of residence"],
+                                        revisions=[revision.pk],
+                                    )
+                                    persons_to_create.append(person)
+                                    persons_in_bd.add(founder_hash)
+                                else:
+                                    if founder_hash not in persons_with_no_revision:
+                                        persons_to_add_revision.append(founder_hash)
+                                        persons_with_no_revision.add(founder_hash)
 
-            if companies_to_create:
-                Company.objects.bulk_create(companies_to_create)
+                # If company is not in db yet, let's add it to the accum
+                if company_line["edrpou"] not in companies_in_bd:
+                    companies_to_create.append(Company(edrpou=company_line["edrpou"]))
+                    dirty_companies.add(company_line["edrpou"])
+                    companies_in_bd.add(company_line["edrpou"])
 
-            if company_records_to_create:
-                CompanyRecord.objects.bulk_create(company_records_to_create)
-
-            if persons_to_create:
-                Person.objects.bulk_create(persons_to_create)
-
-            if company_records_to_add_revision:
-                with connection.cursor() as cursor:
-                    hashes_str = ",".join("'{}'".format(s) for s in company_records_to_add_revision)
-                    cursor.execute(
-                        "UPDATE " + CompanyRecord._meta.db_table + "  SET revisions = revisions || '{%s}' " +
-                        "WHERE company_hash IN (" + hashes_str + ")",
-                        [int(revision.pk)]
+                # Checking if such company record is already present in db
+                company_record_hash = self.make_key_for_company(company_line)
+                if company_record_hash not in company_records_in_bd:
+                    company_record = CompanyRecord(
+                        company_hash=company_record_hash,
+                        company_id=company_line["edrpou"],
+                        name=company_line["name"],
+                        short_name=company_line["short_name"] or "",
+                        location=company_line["location"] or "",
+                        company_profile=company_line.get("company_profile", "") or "",
+                        status=CompanyRecord.get_status(company_line.get("status", "інформація відсутня")),
+                        revisions=[revision.pk]
                     )
 
-            if persons_to_add_revision:
-                with connection.cursor() as cursor:
-                    hashes_str = ",".join("'{}'".format(s) for s in persons_to_add_revision)
-                    cursor.execute(
-                        "UPDATE " + Person._meta.db_table + "  SET revisions = revisions || '{%s}' " +
-                        "WHERE person_hash IN (" + hashes_str + ")",
-                        [int(revision.pk)]
-                    )
+                    # Adding that company into accum
+                    company_records_to_create.append(company_record)
+                    dirty_companies.add(company_line["edrpou"])
+                    # Ignoring that company record hash for the current revision
+                    company_records_in_bd.add(company_record_hash)
+                else:
+                    if company_record_hash not in company_records_with_no_revision:
+                        company_records_to_add_revision.append(company_record_hash)
+                        company_records_with_no_revision.add(company_record_hash)
 
-            if dirty_companies:
-                for update_me in chunkify(dirty_companies, 10000):
-                    logger.debug(
-                        "Updating {} records in db as diry".format(len(update_me))
-                    )
-                    Company.objects.filter(pk__in=update_me).update(
-                        is_dirty=True, last_modified=timezone.now()
-                    )
+                if len(companies_to_create) >= 10000 or len(persons_to_create) >= 10000:
+                    Company.objects.bulk_create(companies_to_create)
+                    CompanyRecord.objects.bulk_create(company_records_to_create)
+                    companies_to_create = []
+                    company_records_to_create = []
 
-            revision.imported = True
-            revision.save()
+                    if company_records_to_add_revision:
+                        with connection.cursor() as cursor:
+                            # Fuck, cannot believe I'm doing that
+                            hashes_str = ",".join("'{}'".format(s) for s in company_records_to_add_revision)
+                            # Guess what? There are no support of adding something to PG arrays through django ORM
+                            cursor.execute(
+                                "UPDATE " + CompanyRecord._meta.db_table + "  SET revisions = revisions || '{%s}' " +
+                                "WHERE company_hash IN (" + hashes_str + ")",
+                                [int(revision.pk)]
+                            )
+
+                        company_records_to_add_revision = []
+
+                if len(persons_to_create) >= 10000:
+                    Person.objects.bulk_create(persons_to_create)
+                    persons_to_create = []
+
+                    if persons_to_add_revision:
+                        with connection.cursor() as cursor:
+                            hashes_str = ",".join("'{}'".format(s) for s in persons_to_add_revision)
+                            cursor.execute(
+                                "UPDATE " + Person._meta.db_table + "  SET revisions = revisions || '{%s}' " +
+                                "WHERE person_hash IN (" + hashes_str + ")",
+                                [int(revision.pk)]
+                            )
+
+                        persons_to_add_revision = []
+
+        if companies_to_create:
+            Company.objects.bulk_create(companies_to_create)
+
+        if company_records_to_create:
+            CompanyRecord.objects.bulk_create(company_records_to_create)
+
+        if persons_to_create:
+            Person.objects.bulk_create(persons_to_create)
+
+        if company_records_to_add_revision:
+            with connection.cursor() as cursor:
+                hashes_str = ",".join("'{}'".format(s) for s in company_records_to_add_revision)
+                cursor.execute(
+                    "UPDATE " + CompanyRecord._meta.db_table + "  SET revisions = revisions || '{%s}' " +
+                    "WHERE company_hash IN (" + hashes_str + ")",
+                    [int(revision.pk)]
+                )
+
+        if persons_to_add_revision:
+            with connection.cursor() as cursor:
+                hashes_str = ",".join("'{}'".format(s) for s in persons_to_add_revision)
+                cursor.execute(
+                    "UPDATE " + Person._meta.db_table + "  SET revisions = revisions || '{%s}' " +
+                    "WHERE person_hash IN (" + hashes_str + ")",
+                    [int(revision.pk)]
+                )
+
+        if dirty_companies:
+            for update_me in chunkify(dirty_companies, 10000):
+                logger.debug(
+                    "Updating {} records in db as diry".format(len(update_me))
+                )
+                Company.objects.filter(pk__in=update_me).update(
+                    is_dirty=True, last_modified=timezone.now()
+                )
+
+        revision.imported = True
+        revision.save()
 
     def parse_raw_rec(self, company):
         """
@@ -685,15 +699,16 @@ class Command(BaseCommand):
         if options["local_file"]:
             _, ext = os.path.splitext(options["local_file"])
 
-            self.load_file(
-                options["local_file"],
-                options["guid"],
-                options["revision"],
-                parse(options["timestamp"], dayfirst=True),
-                options["overwrite"],
-                ext,
-                url=""
-            )
+            with open(options["local_file"], "rb") as fp:
+                self.load_file(
+                    fp,
+                    options["guid"],
+                    options["revision"],
+                    parse(options["timestamp"], dayfirst=True),
+                    options["overwrite"],
+                    ext=ext,
+                    url=""
+                )
         else:
             if options["guid"] == "all":
                 logger.info("Retrieving all datasets we know about")
