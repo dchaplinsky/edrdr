@@ -66,7 +66,7 @@ class Command(LoadCommand):
         ext = ext or ".zip"
 
         local_filename = "{}__{}{}".format(
-            timestamp.strftime("%d.%m.%Y %H:%M"), revision
+            timestamp.strftime("%d.%m.%Y %H:%M"), revision, ext
         )
 
         full_path = os.path.join(settings.DATA_STORAGE_PATH, local_filename)
