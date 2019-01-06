@@ -18,6 +18,7 @@ from companies.management.commands.load_companies import (
     Command as LoadCommand,
     logger,
     proxies,
+    Pipeline
 )
 from tqdm import tqdm
 from dateutil.parser import parse
