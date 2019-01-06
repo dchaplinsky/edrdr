@@ -233,7 +233,7 @@ class Person(models.Model):
         "founder": _("Засновник"),
         "owner": _("Бенефіціарний власник"),
     }
-    name = ArrayField(models.TextField(), default=[], verbose_name="Імена")
+    name = ArrayField(models.TextField(), default=list, verbose_name="Імена")
     person_hash = models.TextField("Ключ дедуплікації", primary_key=True)
 
     company = models.ForeignKey(
@@ -245,8 +245,8 @@ class Person(models.Model):
     person_type = models.CharField(
         max_length=10, choices=PERSON_TYPES.items(), db_index=True
     )
-    address = ArrayField(models.TextField(), default=[], verbose_name="Адреси")
-    country = ArrayField(models.TextField(), default=[], verbose_name="Країни")
+    address = ArrayField(models.TextField(), default=list, verbose_name="Адреси")
+    country = ArrayField(models.TextField(), default=list, verbose_name="Країни")
     raw_record = models.TextField(blank=True, verbose_name="Оригінал запису")
     tokenized_record = models.TextField(blank=True, verbose_name="Токенізований запис")
     share = models.TextField(blank=True, verbose_name="Уставний внесок")
