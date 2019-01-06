@@ -381,7 +381,7 @@ class Command(BaseCommand):
         # different datasets
 
 
-        if revision is not None:
+        if revision_id is not None:
             revision, revision_created = Revision.objects.get_or_create(
                 pk=revision_id,
                 defaults={
