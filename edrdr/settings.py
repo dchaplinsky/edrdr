@@ -235,7 +235,7 @@ CATALOG_PER_PAGE = 24
 # Setup Elasticsearch default connection
 ELASTICSEARCH_CONNECTIONS = {
     'default': {
-        'hosts': get_env_str('ELASTICSEARCH_DSL', 'localhost:9200'),
+        'hosts': get_env_str('ELASTICSEARCH_DSN', 'localhost:9200'),
         'timeout': int(get_env_str('ELASTICSEARCH_TIMEOUT', '120'))
     }
 }
