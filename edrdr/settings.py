@@ -236,7 +236,7 @@ CATALOG_PER_PAGE = 24
 ELASTICSEARCH_CONNECTIONS = {
     'default': {
         'hosts': get_env_str('ELASTICSEARCH_DSN', 'localhost:9200'),
-        'timeout': int(get_env_str('ELASTICSEARCH_TIMEOUT', '120'))
+        'timeout': int(get_env_str('ELASTICSEARCH_TIMEOUT', '30'))
     }
 }
 
