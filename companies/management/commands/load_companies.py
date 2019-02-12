@@ -380,6 +380,8 @@ class Command(BaseCommand):
         # file retrieved from data.gov.ua. Revision id is unique even across
         # different datasets
 
+        mia_bo = 0
+        mia_founders = 0
 
         if revision_id is not None:
             revision, revision_created = Revision.objects.get_or_create(
@@ -481,31 +483,34 @@ class Command(BaseCommand):
                     for f in founders:
                         if f["Is beneficial owner"]:
                             # That's BO and we know a name
-                            if not f["BO is absent"] and f["Name"]:
-                                bo_hash = self.make_key_for_person(
-                                    company_line["edrpou"],
-                                    f["raw_record"],
-                                    "owner"
-                                )
-
-                                if bo_hash not in persons_in_bd:
-                                    person = Person(
-                                        company_id=company_line["edrpou"],
-                                        person_type="owner",
-                                        person_hash=bo_hash,
-                                        raw_record=f["raw_record"],
-                                        name=f["Name"],
-                                        address=f["Address of residence"],
-                                        country=f["Country of residence"],
-                                        revisions=[revision.pk],
+                            if not f["BO is absent"]:
+                                if f["Name"]:
+                                    bo_hash = self.make_key_for_person(
+                                        company_line["edrpou"],
+                                        f["raw_record"],
+                                        "owner"
                                     )
-                                    persons_to_create.append(person)
-                                    dirty_companies.add(company_line["edrpou"])
-                                    persons_in_bd.add(bo_hash)
+
+                                    if bo_hash not in persons_in_bd:
+                                        person = Person(
+                                            company_id=company_line["edrpou"],
+                                            person_type="owner",
+                                            person_hash=bo_hash,
+                                            raw_record=f["raw_record"],
+                                            name=f["Name"],
+                                            address=f["Address of residence"],
+                                            country=f["Country of residence"],
+                                            revisions=[revision.pk],
+                                        )
+                                        persons_to_create.append(person)
+                                        dirty_companies.add(company_line["edrpou"])
+                                        persons_in_bd.add(bo_hash)
+                                    else:
+                                        if bo_hash not in persons_with_no_revision:
+                                            persons_to_add_revision.append(bo_hash)
+                                            persons_with_no_revision.add(bo_hash)
                                 else:
-                                    if bo_hash not in persons_with_no_revision:
-                                        persons_to_add_revision.append(bo_hash)
-                                        persons_with_no_revision.add(bo_hash)
+                                    mia_bo += 1
                         else:
                             if f["Name"]:
                                 founder_hash = self.make_key_for_person(
@@ -531,6 +536,8 @@ class Command(BaseCommand):
                                     if founder_hash not in persons_with_no_revision:
                                         persons_to_add_revision.append(founder_hash)
                                         persons_with_no_revision.add(founder_hash)
+                            else:
+                                mia_founders += 1
 
                 # If company is not in db yet, let's add it to the accum
                 if company_line["edrpou"] not in companies_in_bd:
@@ -626,7 +633,7 @@ class Command(BaseCommand):
         if dirty_companies:
             for update_me in chunkify(dirty_companies, 10000):
                 logger.debug(
-                    "Updating {} records in db as diry".format(len(update_me))
+                    "Updating {} records in db as dirty".format(len(update_me))
                 )
                 Company.objects.filter(pk__in=update_me).update(
                     is_dirty=True, last_modified=timezone.now()
@@ -634,6 +641,7 @@ class Command(BaseCommand):
 
         revision.imported = True
         revision.save()
+        print("Missing BO: {}, Missing founders: {}".format(mia_bo, mia_founders))
 
     def parse_raw_rec(self, company):
         """
