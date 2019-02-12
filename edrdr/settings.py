@@ -226,7 +226,7 @@ CATALOG_PER_PAGE = 24
 ELASTICSEARCH_CONNECTIONS = {
     'default': {
         'hosts': 'localhost',
-        'timeout': 120
+        'timeout': 30
     }
 }
 
