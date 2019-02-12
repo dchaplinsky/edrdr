@@ -214,7 +214,7 @@ USE_TZ = True
 
 DATA_STORAGE_PATH = get_env_str('DATA_STORAGE_PATH', "/Users/dchaplinsky/Projects/edrdr/data/")
 
-CACHEOPS_REDIS = "redis://localhost:6379/2"
+CACHEOPS_REDIS = get_env_str('CACHEOPS_REDIS_DSN', "redis://localhost:6379/2")
 
 CACHEOPS = {
     'companies.*': {
@@ -224,7 +224,7 @@ CACHEOPS = {
 
 CACHEOPS_DEGRADE_ON_FAILURE = True
 
-PARSING_REDIS = "redis://localhost:6379/4"
+PARSING_REDIS = get_env_str('PARSING_REDIS_DSN', "redis://localhost:6379/4")
 PROXY = get_env_str('PROXY', None)
 
 NUM_THREADS = int(get_env_str('NUM_THREADS', '4'))
