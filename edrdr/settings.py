@@ -11,6 +11,15 @@ https://docs.djangoproject.com/en/1.11/ref/settings/
 """
 
 import os
+import raven
+
+def get_env_str(k, default):
+    return os.environ.get(k, default)
+
+def get_env_str_list(k, default=""):
+    if os.environ.get(k) is not None:
+        return os.environ.get(k).strip().split(" ")
+    return default
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -20,16 +29,21 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'tg=jh69mhw%*rd)o93^e5d8gu6+2v!)y5dy+$o$o&qt_io*#)c'
+SECRET_KEY = get_env_str('SECRET_KEY', 'tg=jh69mhw%*rd)o93^e5d8gu6+2v!)y5dy+$o$o&qt_io*#)c')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = get_env_str_list('ALLOWED_HOSTS', [])
 LANGUAGE_CODE = 'uk'
 SITE_ID = 1
-STATIC_ROOT = os.path.join(BASE_DIR, "static")
 SITE_URL = "https://ring.org.ua"
+
+FORCE_SCRIPT_NAME = get_env_str('FORCE_SCRIPT_NAME', '')
+
+STATIC_URL = get_env_str('STATIC_URL', '{}/static/'.format(FORCE_SCRIPT_NAME))
+STATIC_ROOT = get_env_str('STATIC_ROOT', os.path.join(BASE_DIR, "static"))
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -141,7 +155,6 @@ PIPELINE = {
     }
 }
 
-STATIC_URL = '/static/'
 
 WSGI_APPLICATION = 'edrdr.wsgi.application'
 
@@ -151,16 +164,14 @@ WSGI_APPLICATION = 'edrdr.wsgi.application'
 
 DATABASES = {
     'default': {
-        # Strictly PostgreSQL
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'edrdr',
-        'USER': 'edrdr',
-        'PASSWORD': '',
-        'HOST': '127.0.0.1',
-        'PORT': '5432',
+        'NAME': get_env_str('DB_NAME', 'edrdr'),
+        'USER': get_env_str('DB_USER', 'edrdr'),
+        'PASSWORD': get_env_str('DB_PASS', ''),
+        'HOST': get_env_str('DB_HOST', '127.0.0.1'),
+        'PORT': get_env_str('DB_PORT', '5432')
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/1.11/ref/settings/#auth-password-validators
@@ -201,9 +212,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
 
-STATIC_URL = '/static/'
-
-DATA_STORAGE_PATH = "/Users/dchaplinsky/Projects/edrdr/data/"
+DATA_STORAGE_PATH = get_env_str('DATA_STORAGE_PATH', "/Users/dchaplinsky/Projects/edrdr/data/")
 
 CACHEOPS_REDIS = "redis://localhost:6379/2"
 
@@ -216,18 +225,30 @@ CACHEOPS = {
 CACHEOPS_DEGRADE_ON_FAILURE = True
 
 PARSING_REDIS = "redis://localhost:6379/4"
-PROXY = None
+PROXY = get_env_str('PROXY', None)
 
-NUM_THREADS = 4
-PATH_TO_SECRET_SAUCE = ""
+NUM_THREADS = int(get_env_str('NUM_THREADS', '4'))
+
+PATH_TO_SECRET_SAUCE = get_env_str('PATH_TO_SECRET_SAUCE', "")
 CATALOG_PER_PAGE = 24
 
 # Setup Elasticsearch default connection
 ELASTICSEARCH_CONNECTIONS = {
     'default': {
-        'hosts': 'localhost',
-        'timeout': 120
+        'hosts': get_env_str('ELASTICSEARCH_DSL', 'localhost:9200'),
+        'timeout': int(get_env_str('ELASTICSEARCH_TIMEOUT', '120'))
     }
+}
+
+try:
+    GIT_VERSION = raven.fetch_git_sha(os.path.abspath(BASE_DIR))
+except raven.exceptions.InvalidGitRepository:
+    GIT_VERSION = "undef"
+    pass
+
+RAVEN_CONFIG = {
+    'dsn': get_env_str('RAVEN_DSN', None),
+    'release': get_env_str('VERSION', GIT_VERSION),
 }
 
 try:
