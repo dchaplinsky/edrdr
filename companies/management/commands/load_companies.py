@@ -380,7 +380,6 @@ class Command(BaseCommand):
         # file retrieved from data.gov.ua. Revision id is unique even across
         # different datasets
 
-
         if revision_id is not None:
             revision, revision_created = Revision.objects.get_or_create(
                 pk=revision_id,
@@ -481,7 +480,7 @@ class Command(BaseCommand):
                     for f in founders:
                         if f["Is beneficial owner"]:
                             # That's BO and we know a name
-                            if not f["BO is absent"] and f["Name"]:
+                            if not f["BO is absent"]:
                                 bo_hash = self.make_key_for_person(
                                     company_line["edrpou"],
                                     f["raw_record"],
@@ -507,30 +506,29 @@ class Command(BaseCommand):
                                         persons_to_add_revision.append(bo_hash)
                                         persons_with_no_revision.add(bo_hash)
                         else:
-                            if f["Name"]:
-                                founder_hash = self.make_key_for_person(
-                                    company_line["edrpou"],
-                                    f["raw_record"],
-                                    "owner"
-                                )
+                            founder_hash = self.make_key_for_person(
+                                company_line["edrpou"],
+                                f["raw_record"],
+                                "owner"
+                            )
 
-                                if founder_hash not in persons_in_bd:
-                                    person = Person(
-                                        company_id=company_line["edrpou"],
-                                        person_hash=founder_hash,
-                                        person_type="founder",
-                                        raw_record=f["raw_record"],
-                                        name=f["Name"],
-                                        address=f["Address of residence"],
-                                        country=f["Country of residence"],
-                                        revisions=[revision.pk],
-                                    )
-                                    persons_to_create.append(person)
-                                    persons_in_bd.add(founder_hash)
-                                else:
-                                    if founder_hash not in persons_with_no_revision:
-                                        persons_to_add_revision.append(founder_hash)
-                                        persons_with_no_revision.add(founder_hash)
+                            if founder_hash not in persons_in_bd:
+                                person = Person(
+                                    company_id=company_line["edrpou"],
+                                    person_hash=founder_hash,
+                                    person_type="founder",
+                                    raw_record=f["raw_record"],
+                                    name=f["Name"],
+                                    address=f["Address of residence"],
+                                    country=f["Country of residence"],
+                                    revisions=[revision.pk],
+                                )
+                                persons_to_create.append(person)
+                                persons_in_bd.add(founder_hash)
+                            else:
+                                if founder_hash not in persons_with_no_revision:
+                                    persons_to_add_revision.append(founder_hash)
+                                    persons_with_no_revision.add(founder_hash)
 
                 # If company is not in db yet, let's add it to the accum
                 if company_line["edrpou"] not in companies_in_bd:
@@ -626,7 +624,7 @@ class Command(BaseCommand):
         if dirty_companies:
             for update_me in chunkify(dirty_companies, 10000):
                 logger.debug(
-                    "Updating {} records in db as diry".format(len(update_me))
+                    "Updating {} records in db as dirty".format(len(update_me))
                 )
                 Company.objects.filter(pk__in=update_me).update(
                     is_dirty=True, last_modified=timezone.now()
