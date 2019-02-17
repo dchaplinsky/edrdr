@@ -1,3 +1,4 @@
+import logging
 from django.db import models
 from django.utils.translation import ugettext_noop as _
 from django.contrib.postgres.fields import ArrayField
@@ -8,6 +9,9 @@ from tokenize_uk import tokenize_words
 from companies.exceptions import StatusDoesntExist
 
 from names_translator.name_utils import parse_and_generate, autocomplete_suggestions
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("models")
 
 
 class Revision(models.Model):
@@ -71,9 +75,13 @@ class Company(models.Model):
             names_autocomplete.add(str(self.pk))
 
             companies.add(company_record.short_name)
-            if max(company_record.revisions) > latest_revision:
-                latest_record = company_record
-                latest_revision = max(company_record.revisions)
+
+            if company_record.revisions:
+                if max(company_record.revisions) > latest_revision:
+                    latest_record = company_record
+                    latest_revision = max(company_record.revisions)
+            else:
+                logger.warning("Cannot find revisions for the CompanyRecord {}".format(self.pk))
 
         for person in (
             self.persons.all().defer("tokenized_record", "share", "revisions").nocache()
@@ -87,7 +95,7 @@ class Company(models.Model):
                 for country in person.country:
                     addresses.add(country)
 
-                raw_records.add(person.raw_record)
+            raw_records.add(person.raw_record)
 
         for name, position in persons:
             all_persons |= parse_and_generate(name, position)
