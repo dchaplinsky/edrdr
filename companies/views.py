@@ -16,12 +16,12 @@ from companies.tools.paginator import paginated
 
 
 class RevisionDetail(DetailView):
-    context_object_name = 'revision'
+    context_object_name = "revision"
     queryset = Revision.objects.filter(ignore=False)
 
 
 class CompanyDetail(DetailView):
-    context_object_name = 'company'
+    context_object_name = "company"
     queryset = Company.objects.prefetch_related("records", "persons")
 
     status_order = (
@@ -43,11 +43,13 @@ class CompanyDetail(DetailView):
 
         def add_group(current_record):
             if current_record is not None:
-                periods.append({
-                    "start_revision": start_revision,
-                    "finish_revision": finish_revision,
-                    "record": current_record,
-                })
+                periods.append(
+                    {
+                        "start_revision": start_revision,
+                        "finish_revision": finish_revision,
+                        "record": current_record,
+                    }
+                )
             current_record = None
 
         for r, revision in revisions.items():
@@ -85,6 +87,7 @@ class CompanyDetail(DetailView):
         """
         Weird heuristic to identify the latest record in the dump
         """
+
         def get_pos(obj):
             try:
                 return self.status_order.index(obj.get_status_display().lower())
@@ -118,10 +121,14 @@ class CompanyDetail(DetailView):
 
         latest_persons = []
         latest_persons_revision = 0
-        global_revisions = OrderedDict([
-            (r.pk, r)
-            for r in Revision.objects.filter(imported=True, ignore=False).order_by("pk")
-        ])
+        global_revisions = OrderedDict(
+            [
+                (r.pk, r)
+                for r in Revision.objects.filter(imported=True, ignore=False).order_by(
+                    "pk"
+                )
+            ]
+        )
 
         for rec in obj.records.all():
             for r in rec.revisions:
@@ -138,7 +145,9 @@ class CompanyDetail(DetailView):
 
         # Now let's sort company records inside each revision
         for r, records in records_revisions.items():
-            records_revisions[r] = sorted(records, key=self.key_by_company_status, reverse=True)
+            records_revisions[r] = sorted(
+                records, key=self.key_by_company_status, reverse=True
+            )
 
         persons_revisions = defaultdict(list)
         for p in obj.persons.all():
@@ -160,75 +169,64 @@ class CompanyDetail(DetailView):
         def hash_for_companies(records):
             return tuple(sorted(r.company_hash for r in records))
 
-        context.update({
-            "global_revisions": global_revisions,
-            "used_revisions": sorted(used_revisions),
-            "latest_record": latest_record,
-            "latest_record_revision": latest_record_revision,
-            "grouped_company_records": self.group_revisions(
-                global_revisions,
-                records_revisions,
-                hash_field_getter=hash_for_companies
-            ),
-            "grouped_persons_records": self.group_revisions(
-                global_revisions,
-                persons_revisions,
-                hash_field_getter=hash_for_persons
-            ),
-            "latest_persons": latest_persons,
-            "latest_persons_revision": latest_persons_revision,
-            "records_revisions": records_revisions
-        })
+        context.update(
+            {
+                "global_revisions": global_revisions,
+                "used_revisions": sorted(used_revisions),
+                "latest_record": latest_record,
+                "latest_record_revision": latest_record_revision,
+                "grouped_company_records": self.group_revisions(
+                    global_revisions,
+                    records_revisions,
+                    hash_field_getter=hash_for_companies,
+                ),
+                "grouped_persons_records": self.group_revisions(
+                    global_revisions,
+                    persons_revisions,
+                    hash_field_getter=hash_for_persons,
+                ),
+                "latest_persons": latest_persons,
+                "latest_persons_revision": latest_persons_revision,
+                "records_revisions": records_revisions,
+            }
+        )
 
         return context
 
 
 class SuggestView(View):
     def get(self, request):
-        q = request.GET.get('q', '').strip()
+        q = request.GET.get("q", "").strip()
 
         suggestions = []
         seen = set()
 
-        s = ElasticCompany.search().source(
-            ['names_autocomplete']
-        ).highlight('names_autocomplete').highlight_options(
-            order='score', fragment_size=100,
-            number_of_fragments=10,
-            type="fvh",
-            pre_tags=['<strong>'],
-            post_tags=["</strong>"]
+        s = (
+            ElasticCompany.search()
+            .source(["names_autocomplete"])
+            .highlight("names_autocomplete")
+            .highlight_options(
+                order="score",
+                fragment_size=100,
+                number_of_fragments=10,
+                type="fvh",
+                pre_tags=["<strong>"],
+                post_tags=["</strong>"],
+            )
         )
 
         s = s.query(
             "bool",
-            must=[
-                Q(
-                    "match",
-                    names_autocomplete={
-                        "query": q,
-                        "operator": "and"
-                    }
-                )
-            ],
+            must=[Q("match", names_autocomplete={"query": q, "operator": "and"})],
             should=[
-                Q(
-                    "match_phrase",
-                    names_autocomplete={
-                        "query": q,
-                        "boost": 2
-                    },
-                ),
+                Q("match_phrase", names_autocomplete={"query": q, "boost": 2}),
                 Q(
                     "span_first",
-                    match=Q(
-                        "span_term",
-                        names_autocomplete=q
-                    ),
+                    match=Q("span_term", names_autocomplete=q),
                     end=4,
-                    boost=2
-                )
-            ]
+                    boost=2,
+                ),
+            ],
         )[:150]
 
         res = s.execute()
@@ -242,24 +240,27 @@ class SuggestView(View):
 
         ms = MultiSearch()
 
-        for sugg in suggestions[:10]:
-            ms = ms.add(ElasticCompany.search().query(
-                "match_phrase",
-                all={
-                    "query": q
-                }
-            ).source(["latest_record", "full_edrpou", "companies", "latest_record"])[:1])
+        number_of_suggs = 20
+        for sugg in suggestions[:number_of_suggs]:
+            ms = ms.add(
+                ElasticCompany.search()
+                .query(
+                    "match_phrase",
+                    all={
+                        "query": sugg.replace("<strong>", "").replace("</strong>", "")
+                    },
+                )
+                .source(["latest_record", "full_edrpou", "companies"])[:1]
+            )
 
         rendered_result = []
         if suggestions:
             rendered_result = [
-                render_to_string("companies/autocomplete.html", {
-                    "result": {
-                        "hl": k,
-                        "company": company
-                    }
-                })
-                for k, company in zip(suggestions[:20], ms.execute())
+                render_to_string(
+                    "companies/autocomplete.html",
+                    {"result": {"hl": k, "company": company}},
+                )
+                for k, company in zip(suggestions[:number_of_suggs], ms.execute())
             ]
 
         return JsonResponse(rendered_result, safe=False)
@@ -271,11 +272,15 @@ class HomeView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        context.update({
-            "num_of_companies": Company.objects.count(),
-            "num_of_persons": Person.objects.count(),
-            "num_of_beneficiaries": Person.objects.filter(person_type="owner").count()
-        })
+        context.update(
+            {
+                "num_of_companies": Company.objects.count(),
+                "num_of_persons": Person.objects.count(),
+                "num_of_beneficiaries": Person.objects.filter(
+                    person_type="owner"
+                ).count(),
+            }
+        )
 
         return context
 
@@ -301,7 +306,7 @@ class SearchView(TemplateView):
             search_type = "strict"
 
         if query:
-            nwords = len(re.findall(r'\w{2,}', query))
+            nwords = len(re.findall(r"\w{2,}", query))
 
             if nwords > 3:
                 should_match = str(nwords - int(nwords > 6) - 1)
@@ -310,22 +315,13 @@ class SearchView(TemplateView):
 
             if not is_addr:
                 strict_query = ElasticCompany.search().query(
-                    "match_phrase",
-                    all={
-                        "query": query,
-                        "slop": 6
-                    }
+                    "match_phrase", all={"query": query, "slop": 6}
                 )
             else:
                 no_zip_q = re.sub(r"\b\d{5,}\W", "", query)
                 strict_query = ElasticCompany.search().query(
-                    "match",
-                    addresses={
-                        "query": no_zip_q,
-                        "operator": "and",
-                    }
+                    "match", addresses={"query": no_zip_q, "operator": "and"}
                 )
-
 
             loose_query = ElasticCompany.search().query(
                 "match",
@@ -333,7 +329,7 @@ class SearchView(TemplateView):
                     "query": query,
                     "operator": "or",
                     "minimum_should_match": should_match,
-                }
+                },
             )
 
             ms = MultiSearch()
@@ -353,26 +349,30 @@ class SearchView(TemplateView):
 
             qs = base_qs
         else:
-            qs = ElasticCompany.search().query('match_all')
+            qs = ElasticCompany.search().query("match_all")
 
             base_count = loose_count = strict_count = qs.count()
 
-        results = qs.highlight_options(
-            order='score',
-            pre_tags=['<u class="match">'],
-            post_tags=["</u>"]
-        ).highlight(
-            "*",
-            require_field_match=False,
-            fragment_size=100,
-            number_of_fragments=10
-        ).source([
-            "full_edrpou",
-            "latest_record.short_name",
-            "latest_record.name",
-            "latest_record.status",
-            "latest_record.location"
-        ])
+        results = (
+            qs.highlight_options(
+                order="score", pre_tags=['<u class="match">'], post_tags=["</u>"]
+            )
+            .highlight(
+                "*",
+                require_field_match=False,
+                fragment_size=100,
+                number_of_fragments=10,
+            )
+            .source(
+                [
+                    "full_edrpou",
+                    "latest_record.short_name",
+                    "latest_record.name",
+                    "latest_record.status",
+                    "latest_record.location",
+                ]
+            )
+        )
 
         search_results = paginated(request, results)
         for res in search_results:
@@ -382,13 +382,15 @@ class SearchView(TemplateView):
                 for content in res.meta.highlight[h_field]:
                     res.hl.append(content)
 
-        context.update({
-            "search_results": search_results,
-            "query": query,
-            "search_type": search_type,
-            "strict_count": strict_count,
-            "loose_count": loose_count,
-            "base_count": base_count,
-        })
+        context.update(
+            {
+                "search_results": search_results,
+                "query": query,
+                "search_type": search_type,
+                "strict_count": strict_count,
+                "loose_count": loose_count,
+                "base_count": base_count,
+            }
+        )
 
         return self.render_to_response(context)

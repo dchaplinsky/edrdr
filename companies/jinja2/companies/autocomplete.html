@@ -2,8 +2,12 @@
     <span>{{ result.hl|safe }}</span>
     <span class="autocomplete-hint pull-right">
         {% if result.company.hits.total == 1 %}
-            {{ result.company[0].full_edrpou }}{% if result.hl|striptags not in result.company[0].companies -%}
-            , {{ result.company[0].latest_record.short_name or result.company[0].latest_record.name }}
+            {% if result.hl|striptags == result.company[0].full_edrpou -%}
+            {{ result.company[0].latest_record.short_name or result.company[0].latest_record.name }}
+            {% else %}
+                {{ result.company[0].full_edrpou }}{% if result.hl|striptags not in result.company[0].companies -%}
+                , {{ result.company[0].latest_record.short_name or result.company[0].latest_record.name }}
+                {%- endif %}
             {%- endif %}
         {% else %}
             {{ result.company.hits.total }} {{ result.company.hits.total|uk_plural(_("компанія"), _("компанії"), _("компаній")) }}

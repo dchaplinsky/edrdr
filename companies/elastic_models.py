@@ -212,9 +212,14 @@ namesAutocompleteAnalyzer = analyzer(
         "lowercase"
     ]
 )
+
 namesAutocompleteSearchAnalyzer = analyzer(
     'namesAutocompleteSearchAnalyzer',
-    tokenizer=tokenizer("lowercase")
+    tokenizer=tokenizer("whitespace"),
+
+    filter=[
+        "lowercase"
+    ]
 )
 
 ukrainianStopwordsAnalyzer = analyzer(
