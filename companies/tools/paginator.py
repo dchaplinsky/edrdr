@@ -1,4 +1,4 @@
-from django.core.paginator import Paginator, Page
+from django.core.paginator import Paginator, Page, EmptyPage
 from django.utils import six
 from django.conf import settings
 
@@ -81,9 +81,13 @@ class DjangoPageRangePaginator(Paginator):
         return AbstractPage(*args, **kwargs)
 
 
-def paginated(request, search, klass=ElasticPageRangePaginator,
-              cnt=settings.CATALOG_PER_PAGE):
+def paginated(
+    request, search, klass=ElasticPageRangePaginator, cnt=settings.CATALOG_PER_PAGE
+):
     """Helper function that handles common pagination pattern."""
     paginator = klass(search, cnt)
-    page = request.GET.get('page', 1)
-    return paginator.page(page)
+    page = request.GET.get("page", 1)
+    try:
+        return paginator.page(page)
+    except EmptyPage:
+        return AbstractPage([], int(page), paginator)
