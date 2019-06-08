@@ -1,10 +1,16 @@
+import re
 import logging
+from functools import reduce
+from itertools import permutations, product, islice
+from operator import mul
+
+from collections import OrderedDict, defaultdict
 from django.db import models
 from django.utils.translation import ugettext_noop as _
-from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.fields import ArrayField, JSONField
 from django.urls import reverse
 from django.forms.models import model_to_dict
-
+from Levenshtein import jaro
 from tokenize_uk import tokenize_words
 from companies.exceptions import StatusDoesntExist
 
@@ -36,12 +42,261 @@ class Company(models.Model):
         "Потребує повторної індексації", db_index=True, default=True
     )
 
+    status_order = (
+        "зареєстровано",
+        "зареєстровано, свідоцтво про державну реєстрацію недійсне",
+        "порушено справу про банкрутство",
+        "порушено справу про банкрутство (санація)",
+        "в стані припинення",
+        "припинено",
+    )
+
+    CRIMEA_MARKERS = [
+        re.compile(s, flags=re.U | re.I) for s in [r"\bАРК\b", r"\bКрим\b"]
+    ]
+
+    DONETSK_MARKER_LEVEL1 = [
+        re.compile(s, flags=re.U | re.I) for s in [r"\bДонецк", r"\bДонецьк"]
+    ]
+
+    DONETSK_MARKER_LEVEL2 = [
+        re.compile(r"\b{}\b".format(s), flags=re.U | re.I)
+        for s in [
+            "Авдіївка",
+            "Адвеевка",
+            "Горлівка",
+            "Горловка",
+            "Донецьк",
+            "Донецк",
+            "Єнакієве",
+            "Енакиево",
+            "Жданівка",
+            "Ждановка",
+            "Макіївка",
+            "Макеевка",
+            "Сніжне",
+            "Снежное",
+            "Харцизьк",
+            "Харцызск",
+            "Хрестівка",
+            "Чистякове",
+            "Чистяково",
+            "Шахтарськ",
+            "Шахтерск",
+            "Ясинувата",
+            "Ясиноватая",
+            "Дебальцеве",
+            "Дебальцево",
+        ]
+    ]
+
+    LUHANSK_MARKER_LEVEL1 = [
+        re.compile(s, flags=re.U | re.I) for s in [r"\bЛуганськ", r"\bЛуганск"]
+    ]
+
+    LUHANSK_MARKER_LEVEL2 = [
+        re.compile(r"\b{}\b".format(s), flags=re.U | re.I)
+        for s in [
+            "Алчевськ",
+            "Алчевск",
+            "Антрацит",
+            "Брянка",
+            "Голубівка",
+            "Голубевка",
+            "Довжанськ",
+            "Должанск",
+            "Кадіївка",
+            "Кадиевка",
+            "Луганськ",
+            "Луганск",
+            "Первомайськ",
+            "Первомайск",
+            "Ровеньки",
+            "Сорокине",
+            "Сорокино",
+            "Хрустальний",
+            "Хрустальный",
+            "Золоте",
+            "Золотое",
+        ]
+    ]
+
     @property
     def full_edrpou(self):
         return str(self.pk).rjust(8, "0")
 
     def get_absolute_url(self):
         return reverse("company>detail", kwargs={"pk": self.full_edrpou})
+
+    @staticmethod
+    def compare_two_names(name1, name2, max_splits=7):
+        name1 = re.sub(r"\s+", " ", name1.lower().strip())
+        name2 = re.sub(r"\s+", " ", name2.lower().strip())
+        splits = name2.split(" ")
+        limit = reduce(mul, range(1, max_splits + 1))
+
+        if len(splits) > max_splits:
+            print("Too much permutations for {}".format(name2))
+
+        return max(
+            jaro(name1, " ".join(opt)) for opt in islice(permutations(splits), limit)
+        )
+
+    def take_snapshot_of_flags(self, revision=None, force=False):
+        if revision is None:
+            revision = Revision.objects.order_by("-created").first()
+        else:
+            revision = Revision.objects.get(revision)
+
+        # Let the rampage begin
+        existing_snapshot = CompanySnapshotFlags.objects.filter(
+            company=self, revision=revision
+        )
+        if existing_snapshot:
+            if force:
+                snapshot = existing_snapshot.first()
+
+                # Resetting existing values
+                snapshot.has_bo = False
+                snapshot.has_bo_companies = False
+                snapshot.has_bo_persons = False
+                snapshot.has_founder_companies = False
+                snapshot.has_founder_persons = False
+                snapshot.has_only_companies_bo = False
+                snapshot.has_only_companies_founder = False
+                snapshot.has_only_persons_bo = False
+                snapshot.has_only_persons_founder = False
+                snapshot.has_same_person_as_bo_and_founder = False
+                snapshot.has_same_person_as_bo_and_had = False
+                snapshot.has_very_similar_person_as_bo_and_founder = False
+                snapshot.has_very_similar_person_as_bo_and_head = False
+                snapshot.has_bo_on_occupied_soil = False
+                snapshot.has_bo_in_crimea = False
+            else:
+                return
+        else:
+            snapshot = CompanySnapshotFlags(company=self, revision=revision)
+
+        snapshot.not_present_in_revision = CompanyRecord.objects.filter(
+            company=self, revisions__contains=[revision.pk]
+        ).exists()
+
+        persons = Person.objects.filter(company=self, revisions__contains=[revision.pk])
+
+        all_founder_persons = set()
+        all_owner_persons = set()
+        all_head_persons = set()
+        all_bo_countries = set()
+
+        for p in persons:
+            if p.person_type == "owner":
+                snapshot.has_bo = True
+                all_bo_countries |= set(p.country)
+
+                if p.name:
+                    snapshot.has_bo_persons = True
+                    all_owner_persons |= set(p.name)
+                else:
+                    if p.was_dereferenced:
+                        p.has_dereferenced_bo = True
+                    else:
+                        snapshot.has_bo_companies = True
+
+                for addr in p.address:
+                    for r in self.CRIMEA_MARKERS:
+                        if r.search(addr):
+                            snapshot.has_bo_in_crimea = True
+                            break
+
+                    for r1 in self.LUHANSK_MARKER_LEVEL1:
+                        if r1.search(addr):
+                            for r2 in self.LUHANSK_MARKER_LEVEL2:
+                                if r2.search(addr):
+                                    snapshot.has_bo_on_occupied_soil = True
+                                    break
+
+                    for r1 in self.DONETSK_MARKER_LEVEL1:
+                        if r1.search(addr):
+                            for r2 in self.DONETSK_MARKER_LEVEL2:
+                                if r2.search(addr):
+                                    snapshot.has_bo_on_occupied_soil = True
+                                    break
+
+            if p.person_type == "founder":
+                if p.name:
+                    snapshot.has_founder_persons = True
+                    all_founder_persons |= set(p.name)
+                else:
+                    snapshot.has_founder_companies = True
+
+            if p.person_type == "head":
+                if p.name:
+                    all_head_persons |= set(p.name)
+
+        if snapshot.has_bo_persons and not snapshot.has_bo_companies:
+            snapshot.has_only_persons_bo = True
+
+        if snapshot.has_bo_companies and not snapshot.has_bo_persons:
+            snapshot.has_only_companies_bo = True
+
+        if snapshot.has_founder_persons and not snapshot.has_founder_companies:
+            snapshot.has_only_persons_founder = True
+
+        if snapshot.has_founder_companies and not snapshot.has_founder_persons:
+            snapshot.has_only_companies_founder = True
+
+        if all_owner_persons & all_founder_persons:
+            snapshot.has_same_person_as_bo_and_founder = True
+
+        if all_owner_persons & all_head_persons:
+            snapshot.has_same_person_as_bo_and_had = True
+
+        snapshot.all_similar_founders_and_bos = []
+
+        if len(all_owner_persons) * len(all_founder_persons) > 1000:
+            print("Too many persons to compare for company {}".format(self.pk))
+
+        for i, (owner, founder) in enumerate(
+            product(all_owner_persons, all_founder_persons)
+        ):
+            if owner == founder:
+                continue
+
+            score = self.compare_two_names(owner, founder)
+            if score > 0.93:
+                snapshot.all_similar_founders_and_bos.append(
+                    {"owner": owner, "founder": founder, "score": score}
+                )
+
+                snapshot.has_very_similar_person_as_bo_and_founder = True
+
+            if i > 1000:
+                break
+
+        snapshot.all_similar_heads_and_bos = []
+
+        if len(all_owner_persons) * len(all_head_persons) > 1000:
+            print("Too many persons to compare for company {}".format(self.pk))
+
+        for i, (owner, head) in enumerate(product(all_owner_persons, all_head_persons)):
+            if owner == head:
+                continue
+
+            score = self.compare_two_names(owner, head)
+            if score > 0.93:
+                snapshot.all_similar_heads_and_bos.append(
+                    {"owner": owner, "head": head, "score": score}
+                )
+                snapshot.has_very_similar_person_as_bo_and_head = True
+
+            if i > 1000:
+                break
+
+        snapshot.all_owner_persons = list(all_owner_persons)
+        snapshot.all_founder_persons = list(all_founder_persons)
+        snapshot.all_bo_countries = list(all_bo_countries)
+
+        snapshot.save()
 
     def to_dict(self):
         addresses = set()
@@ -81,7 +336,9 @@ class Company(models.Model):
                     latest_record = company_record
                     latest_revision = max(company_record.revisions)
             else:
-                logger.warning("Cannot find revisions for the CompanyRecord {}".format(self.pk))
+                logger.warning(
+                    "Cannot find revisions for the CompanyRecord {}".format(self.pk)
+                )
 
         for person in (
             self.persons.all().defer("tokenized_record", "share", "revisions").nocache()
@@ -110,6 +367,136 @@ class Company(models.Model):
             "latest_record": latest_record.to_dict(),
             "raw_records": list(filter(None, raw_records)),
             "names_autocomplete": list(filter(None, names_autocomplete)),
+        }
+
+    def group_revisions(self, revisions, records, hash_field_getter):
+        periods = []
+        current_record = None
+
+        current_hash = None
+        start_revision = None
+        finish_revision = None
+
+        def add_group(current_record):
+            if current_record is not None:
+                periods.append(
+                    {
+                        "start_revision": start_revision,
+                        "finish_revision": finish_revision,
+                        "record": current_record,
+                    }
+                )
+            current_record = None
+
+        for r, revision in revisions.items():
+            rec = records.get(r)
+            if rec is None:
+                if current_hash is not None:
+                    # Record disappeared from a history at some point
+                    add_group(current_record)
+                    current_hash = None
+                    start_revision = revision
+                    finish_revision = revision
+                else:
+                    start_revision = revision
+                    finish_revision = revision
+                    # Record for that company wasn't
+                    # present at the time of given revision
+                continue
+
+            if current_hash == hash_field_getter(rec):
+                # If nothing changed between two consequent revisions
+                # adding current record to the group
+                finish_revision = revision
+            else:
+                add_group(current_record)
+                current_record = rec
+                current_hash = hash_field_getter(rec)
+                start_revision = revision
+                finish_revision = revision
+
+        add_group(current_record)
+
+        return periods
+
+    def key_by_company_status(self, obj):
+        try:
+            return self.status_order.index(obj.get_status_display().lower())
+        except ValueError:
+            return -len(self.status_order)
+
+    def get_grouped_record(self, persons_filter_clause=models.Q(bo_is_absent=True)):
+        used_revisions = set()
+        latest_record = None
+        latest_record_revision = 0
+        records_revisions = defaultdict(list)
+
+        latest_persons = []
+        latest_persons_revision = 0
+        global_revisions = OrderedDict(
+            [
+                (r.pk, r)
+                for r in Revision.objects.filter(imported=True, ignore=False).order_by(
+                    "pk"
+                )
+            ]
+        )
+
+        for rec in self.records.all():
+            for r in rec.revisions:
+                if r in records_revisions:
+                    records_revisions[r].append(rec)
+                else:
+                    records_revisions[r] = [rec]
+
+            max_revision = max(rec.revisions)
+            if max_revision > latest_record_revision:
+                latest_record = rec
+                latest_record_revision = max_revision
+            used_revisions |= set(rec.revisions)
+
+        # Now let's sort company records inside each revision
+        for r, records in records_revisions.items():
+            records_revisions[r] = sorted(
+                records, key=self.key_by_company_status, reverse=True
+            )
+
+        persons_revisions = defaultdict(list)
+        for p in self.persons.filter(persons_filter_clause):
+            max_revision = max(p.revisions)
+            for r in p.revisions:
+                persons_revisions[r].append(p)
+
+            if max_revision > latest_persons_revision:
+                latest_persons = [p]
+                latest_persons_revision = max_revision
+            elif max_revision == latest_persons_revision:
+                latest_persons.append(p)
+
+            used_revisions |= set(p.revisions)
+
+        def hash_for_persons(records):
+            return tuple(sorted(r.person_hash for r in records))
+
+        def hash_for_companies(records):
+            return tuple(sorted(r.company_hash for r in records))
+
+        return {
+            "global_revisions": global_revisions,
+            "used_revisions": sorted(used_revisions),
+            "latest_record": latest_record,
+            "latest_record_revision": latest_record_revision,
+            "grouped_company_records": self.group_revisions(
+                global_revisions,
+                records_revisions,
+                hash_field_getter=hash_for_companies,
+            ),
+            "grouped_persons_records": self.group_revisions(
+                global_revisions, persons_revisions, hash_field_getter=hash_for_persons
+            ),
+            "latest_persons": latest_persons,
+            "latest_persons_revision": latest_persons_revision,
+            "records_revisions": records_revisions,
         }
 
     class Meta:
@@ -253,9 +640,69 @@ class Person(models.Model):
     person_type = models.CharField(
         max_length=10, choices=PERSON_TYPES.items(), db_index=True
     )
+    was_dereferenced = models.BooleanField(default=False)
     address = ArrayField(models.TextField(), default=list, verbose_name="Адреси")
     country = ArrayField(models.TextField(), default=list, verbose_name="Країни")
     raw_record = models.TextField(blank=True, verbose_name="Оригінал запису")
     tokenized_record = models.TextField(blank=True, verbose_name="Токенізований запис")
     share = models.TextField(blank=True, verbose_name="Уставний внесок")
     revisions = ArrayField(models.IntegerField(), default=list, verbose_name="Ревізії")
+    bo_is_absent = models.BooleanField(
+        default=False,
+        verbose_name="В реєстрі було прямо вказано, що бенефіціар відсутній",
+    )
+
+
+class CompanySnapshotFlags(models.Model):
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        verbose_name="Компанія",
+        related_name="snapshot_stats",
+    )
+
+    revision = models.ForeignKey(
+        Revision,
+        on_delete=models.CASCADE,
+        verbose_name="Ревізія",
+        related_name="snapshot_stats",
+    )
+
+    has_bo = models.BooleanField(default=False)
+    has_bo_persons = models.BooleanField(default=False)
+    has_bo_companies = models.BooleanField(default=False)
+    has_dereferenced_bo = models.BooleanField(default=False)
+    has_only_persons_bo = models.BooleanField(default=False)
+    has_only_companies_bo = models.BooleanField(default=False)
+
+    has_founder_persons = models.BooleanField(default=False)
+    has_founder_companies = models.BooleanField(default=False)
+    has_only_persons_founder = models.BooleanField(default=False)
+    has_only_companies_founder = models.BooleanField(default=False)
+
+    all_founder_persons = ArrayField(
+        models.TextField(), default=list, verbose_name="Усі засновники ФО"
+    )
+    all_owner_persons = ArrayField(
+        models.TextField(), default=list, verbose_name="Усі бенефіціарні власники ФО"
+    )
+    has_same_person_as_bo_and_founder = models.BooleanField(default=False)
+    has_same_person_as_bo_and_head = models.BooleanField(default=False)
+
+    has_very_similar_person_as_bo_and_founder = models.BooleanField(default=False)
+    has_very_similar_person_as_bo_and_head = models.BooleanField(default=False)
+    all_similar_founders_and_bos = JSONField(
+        default=list, verbose_name="Результати порівняння бенефіціарів та власників"
+    )
+    all_similar_heads_and_bos = JSONField(
+        default=list, verbose_name="Результати порівняння бенефіціарів та директорів"
+    )
+    all_bo_countries = ArrayField(
+        models.TextField(),
+        default=list,
+        verbose_name="Усі країни окрім України, до яких прив'язані БО",
+    )
+    has_bo_on_occupied_soil = models.BooleanField(default=False)
+    has_bo_in_crimea = models.BooleanField(default=False)
+    acting_and_explicitly_stated_that_has_no_bo = models.BooleanField(default=False)
+    not_present_in_revision = models.BooleanField(default=False)

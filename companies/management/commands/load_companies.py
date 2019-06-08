@@ -480,31 +480,31 @@ class Command(BaseCommand):
                     for f in founders:
                         if f["Is beneficial owner"]:
                             # That's BO and we know a name
-                            if not f["BO is absent"]:
-                                bo_hash = self.make_key_for_person(
-                                    company_line["edrpou"],
-                                    f["raw_record"],
-                                    "owner"
-                                )
+                            bo_hash = self.make_key_for_person(
+                                company_line["edrpou"],
+                                f["raw_record"],
+                                "owner"
+                            )
 
-                                if bo_hash not in persons_in_bd:
-                                    person = Person(
-                                        company_id=company_line["edrpou"],
-                                        person_type="owner",
-                                        person_hash=bo_hash,
-                                        raw_record=f["raw_record"],
-                                        name=f["Name"],
-                                        address=f["Address of residence"],
-                                        country=f["Country of residence"],
-                                        revisions=[revision.pk],
-                                    )
-                                    persons_to_create.append(person)
-                                    dirty_companies.add(company_line["edrpou"])
-                                    persons_in_bd.add(bo_hash)
-                                else:
-                                    if bo_hash not in persons_with_no_revision:
-                                        persons_to_add_revision.append(bo_hash)
-                                        persons_with_no_revision.add(bo_hash)
+                            if bo_hash not in persons_in_bd:
+                                person = Person(
+                                    company_id=company_line["edrpou"],
+                                    person_type="owner",
+                                    person_hash=bo_hash,
+                                    raw_record=f["raw_record"],
+                                    name=f["Name"],
+                                    address=f["Address of residence"],
+                                    country=f["Country of residence"],
+                                    revisions=[revision.pk],
+                                    bo_is_absent=f["BO is absent"],
+                                )
+                                persons_to_create.append(person)
+                                dirty_companies.add(company_line["edrpou"])
+                                persons_in_bd.add(bo_hash)
+                            else:
+                                if bo_hash not in persons_with_no_revision:
+                                    persons_to_add_revision.append(bo_hash)
+                                    persons_with_no_revision.add(bo_hash)
                         else:
                             founder_hash = self.make_key_for_person(
                                 company_line["edrpou"],
