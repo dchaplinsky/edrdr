@@ -47,12 +47,10 @@ class Command(BaseCommand):
                     else:
                         spoiled_buffer.append(pk)
 
-        # print(Person.objects.filter(pk__in=rec_buffer).update(was_dereferenced=True))
+        Person.objects.filter(pk__in=rec_buffer).update(was_dereferenced=True)
 
-        print(spoiled_buffer)
+        # with open("/tmp/strange.csv", "w") as fp:
+        #     w = writer(fp)
 
-        with open("/tmp/strange.csv", "w") as fp:
-            w = writer(fp)
-
-            w.writerows(sorted(statements, key=lambda x: len(x[0]), reverse=True))
+        #     w.writerows(sorted(statements, key=lambda x: len(x[0]), reverse=True))
 

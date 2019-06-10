@@ -28,7 +28,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         qs = Company.objects.all()
 
-        for i, company in tqdm(enumerate(qs.iterator()), total=qs.count()):
+        for i, company in tqdm(enumerate(qs.iterator()), total=min(qs.count(), options["limit"])):
             company.take_snapshot_of_flags(options["revision_id"], options["force"])
             
             if options["limit"] is not None and i + 1 > options["limit"]:

@@ -172,14 +172,21 @@ class Company(models.Model):
                 snapshot.has_very_similar_person_as_bo_and_head = False
                 snapshot.has_bo_on_occupied_soil = False
                 snapshot.has_bo_in_crimea = False
+                snapshot.acting_and_explicitly_stated_that_has_no_bo = False
             else:
                 return
         else:
             snapshot = CompanySnapshotFlags(company=self, revision=revision)
 
-        snapshot.not_present_in_revision = CompanyRecord.objects.filter(
+        latest_record = CompanyRecord.objects.filter(
             company=self, revisions__contains=[revision.pk]
-        ).exists()
+        ).first()
+
+        company_is_acting = False
+        if not latest_record:
+            snapshot.not_present_in_revision =True
+        else:
+            company_is_acting = latest_record.status == 1
 
         persons = Person.objects.filter(company=self, revisions__contains=[revision.pk])
 
@@ -192,6 +199,9 @@ class Company(models.Model):
             if p.person_type == "owner":
                 snapshot.has_bo = True
                 all_bo_countries |= set(p.country)
+
+                if p.bo_is_absent and company_is_acting:
+                    self.acting_and_explicitly_stated_that_has_no_bo = True
 
                 if p.name:
                     snapshot.has_bo_persons = True
@@ -425,7 +435,7 @@ class Company(models.Model):
         except ValueError:
             return -len(self.status_order)
 
-    def get_grouped_record(self, persons_filter_clause=models.Q(bo_is_absent=True)):
+    def get_grouped_record(self, persons_filter_clause=models.Q(bo_is_absent=False)):
         used_revisions = set()
         latest_record = None
         latest_record_revision = 0
