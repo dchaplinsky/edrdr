@@ -3,6 +3,7 @@ import logging
 from functools import reduce
 from itertools import permutations, product, islice
 from operator import mul
+from cacheops import cached
 
 from collections import OrderedDict, defaultdict
 from django.db import models
@@ -11,6 +12,7 @@ from django.contrib.postgres.fields import ArrayField, JSONField
 from django.urls import reverse
 from django.forms.models import model_to_dict
 from Levenshtein import jaro
+from fuzzywuzzy import fuzz
 from tokenize_uk import tokenize_words
 from companies.exceptions import StatusDoesntExist
 
@@ -142,11 +144,18 @@ class Company(models.Model):
             jaro(name1, " ".join(opt)) for opt in islice(permutations(splits), limit)
         )
 
-    def take_snapshot_of_flags(self, revision=None, force=False):
+    def take_snapshot_of_flags(
+        self, revision=None, force=False, mass_registration=None
+    ):
         if revision is None:
             revision = Revision.objects.order_by("-created").first()
         else:
             revision = Revision.objects.get(revision)
+
+        if mass_registration is None:
+            mass_registration = CompanyRecord.objects.mass_registration_addresses(
+                revision=revision.pk
+            )
 
         # Let the rampage begin
         existing_snapshot = CompanySnapshotFlags.objects.filter(
@@ -173,6 +182,8 @@ class Company(models.Model):
                 snapshot.has_bo_on_occupied_soil = False
                 snapshot.has_bo_in_crimea = False
                 snapshot.acting_and_explicitly_stated_that_has_no_bo = False
+                snapshot.has_mass_registration_address = False
+                snapshot.has_changes_in_bo = False
             else:
                 return
         else:
@@ -184,9 +195,10 @@ class Company(models.Model):
 
         company_is_acting = False
         if not latest_record:
-            snapshot.not_present_in_revision =True
+            snapshot.not_present_in_revision = True
         else:
             company_is_acting = latest_record.status == 1
+            snapshot.has_mass_registration_address = latest_record.shortened_validated_location in mass_registration
 
         persons = Person.objects.filter(company=self, revisions__contains=[revision.pk])
 
@@ -242,6 +254,47 @@ class Company(models.Model):
             if p.person_type == "head":
                 if p.name:
                     all_head_persons |= set(p.name)
+
+        if snapshot.has_bo_persons:
+            grouped_records = self.get_grouped_record(
+                persons_filter_clause=models.Q(person_type="owner")
+            )["grouped_persons_records"]
+
+            prev_names = None
+            for group in grouped_records:
+                names = set()
+                for r in group["record"]:
+                    names |= set(r.name)
+
+                if prev_names is not None and names != prev_names:
+                    on_the_left = prev_names - names
+                    on_the_right = names - prev_names
+
+                    if len(on_the_left) == len(on_the_right):
+                        ratio = fuzz.token_set_ratio(" ".join(on_the_left), " ".join(on_the_right))
+                        if ratio >= 90:
+                            pass
+                        else:
+                            snapshot.has_changes_in_bo = True
+                            snapshot.bo_diff = {
+                                "prev": list(on_the_left),
+                                "next": list(on_the_right),
+                                "ratio": ratio
+                            }
+                            break
+                    else:
+                        snapshot.has_changes_in_bo = True
+                        snapshot.bo_diff = {
+                            "prev": list(on_the_left),
+                            "next": list(on_the_right),
+                            "ratio": 100
+                        }
+                        break
+
+                prev_names = names
+                if snapshot.has_changes_in_bo:
+                    break
+
 
         if snapshot.has_bo_persons and not snapshot.has_bo_companies:
             snapshot.has_only_persons_bo = True
@@ -514,6 +567,22 @@ class Company(models.Model):
         verbose_name_plural = "Companies"
 
 
+class CompanyRecordManager(models.Manager):
+    def mass_registration_addresses(self, revision=None, cutoff=100):
+        if revision is None:
+            revision = Revision.objects.order_by("-created").first().pk
+
+        qs = self.filter(revisions__contains=[revision])
+
+        return {
+            rec["shortened_validated_location"]: rec["addr_count"]
+            for rec in qs.values("shortened_validated_location")
+            .annotate(addr_count=models.Count("shortened_validated_location"))
+            .filter(addr_count__gte=cutoff)
+            .order_by("-addr_count")
+        }
+
+
 class CompanyRecord(models.Model):
     COMPANY_STATUSES = {
         0: _("інформація відсутня"),
@@ -536,6 +605,15 @@ class CompanyRecord(models.Model):
     name = models.TextField("Назва компанії")
     short_name = models.TextField("Скорочена назва компанії", blank=True)
     location = models.TextField("Адреса реєстрації", blank=True)
+    parsed_location = models.TextField("Адреса реєстрації (уніфікована)", blank=True)
+    validated_location = models.TextField(
+        "Адреса реєстрації (після верифікації за реєстром)", blank=True
+    )
+    shortened_validated_location = models.TextField(
+        "Адреса реєстрації (після верифікації за реєстром та без району)",
+        blank=True,
+        db_index=True,
+    )
     company_profile = models.TextField("Основний вид діяльності", blank=True)
     status = models.IntegerField(
         choices=COMPANY_STATUSES.items(), verbose_name="Статус компанії"
@@ -571,6 +649,8 @@ class CompanyRecord(models.Model):
         "Валідована Квартира/офіс/кімната", max_length=100, default=""
     )
 
+    objects = CompanyRecordManager()
+
     @classmethod
     def get_status(cls, status):
         for k, v in cls.COMPANY_STATUSES.items():
@@ -588,8 +668,7 @@ class CompanyRecord(models.Model):
 
         return "NONE"
 
-    @property
-    def parsed_location(self):
+    def get_parsed_location(self):
         return ", ".join(
             filter(
                 None,
@@ -604,8 +683,7 @@ class CompanyRecord(models.Model):
             )
         )
 
-    @property
-    def validated_location(self):
+    def get_validated_location(self):
         return ", ".join(
             filter(
                 None,
@@ -614,6 +692,19 @@ class CompanyRecord(models.Model):
                     self.validated_location_region,
                     self.validated_location_district,
                     self.validated_location_locality,
+                    self.validated_location_street_address,
+                    self.validated_location_apartment,
+                ],
+            )
+        )
+
+    def get_shortened_validated_location(self):
+        return ", ".join(
+            filter(
+                None,
+                [
+                    self.validated_location_postal_code,
+                    self.validated_location_region,
                     self.validated_location_street_address,
                     self.validated_location_apartment,
                 ],
@@ -716,3 +807,7 @@ class CompanySnapshotFlags(models.Model):
     has_bo_in_crimea = models.BooleanField(default=False)
     acting_and_explicitly_stated_that_has_no_bo = models.BooleanField(default=False)
     not_present_in_revision = models.BooleanField(default=False)
+    has_mass_registration_address = models.BooleanField(default=False)
+    has_changes_in_bo = models.BooleanField(default=False)
+    bo_diff = JSONField(default=dict, verbose_name="Зміни в БО")
+

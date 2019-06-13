@@ -55,6 +55,9 @@ def parse_and_modify(rec):
             validated_address[k] = ""
         setattr(rec, v, validated_address[k])
 
+    rec.parsed_location = rec.get_parsed_location()
+    rec.validated_location = rec.get_validated_location()
+    rec.shortened_validated_location = rec.get_shortened_validated_location()
     return rec
 
 
