@@ -69,3 +69,4 @@ node_modules/
 *.yaml
 companies/tools/address_parser.py
 static/scss/main.css
+*.xlsx

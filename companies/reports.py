@@ -1,51 +1,105 @@
 import random
 
 from django.db.models import Count, Q
+from tqdm import tqdm
 from .models import *
+from xlsxwriter import Workbook
 
 random.seed(1337)
 
 
 class GlobalStats:
+    @staticmethod
+    def write_bo_to_excel(fp, ids):
+        outfile = Workbook(fp, {"remove_timezone": True})
+
+        worksheet = outfile.add_worksheet()
+        curr_line = 0
+        worksheet.write(curr_line, 0, "ЄДРПОУ")
+        worksheet.write(curr_line, 1, "З")
+        worksheet.write(curr_line, 2, "По")
+        worksheet.write(curr_line, 3, "Власник (ПІБ)")
+        worksheet.write(curr_line, 4, "Власник (Повний запис)")
+        dt_format = outfile.add_format({"num_format": "dd/mm/yy"})
+
+        for i, company_edrpou in tqdm(enumerate(ids)):
+
+            try:
+                curr_line += 1
+                if isinstance(company_edrpou, Company):
+                    company = company_edrpou
+                    company_edrpou = company.pk
+                else:
+                    company_edrpou = company_edrpou.strip().lstrip("0")
+                    company = Company.objects.get(pk=company_edrpou)
+
+                worksheet.write(curr_line, 0, company_edrpou)
+
+                grouped_records = company.get_grouped_record(
+                    persons_filter_clause=models.Q(person_type="owner")
+                )["grouped_persons_records"]
+
+                if not grouped_records:
+                    worksheet.write(
+                        curr_line, 1, "Бенефіціарів не вказано"
+                    )
+                else:
+                    for group in grouped_records:
+                        worksheet.write(
+                            curr_line, 1, group["start_revision"].created, dt_format
+                        )
+                        worksheet.write(
+                            curr_line, 2, group["finish_revision"].created, dt_format
+                        )
+
+                        for r in group["record"]:
+                            worksheet.write(
+                                curr_line, 3, ", ".join(r.name)
+                            )
+                            worksheet.write(
+                                curr_line, 4, r.raw_record
+                            )
+                            curr_line += 1
+
+                    curr_line -= 1
+
+            except Company.DoesNotExist:
+                worksheet.write(curr_line, 0, company_edrpou)
+                worksheet.write(curr_line, 1, "Компанію не знайдено")
+
+        outfile.close()
+
+
     def latest_revision(self):
         return Revision.objects.order_by("-created").first()
 
-    def all_company_ids(self):
-        return set(
-            CompanyRecord.objects.filter(
-                revisions__contains=[self.latest_revision().pk]
-            )
-            .values_list("company", flat=True)
-            .distinct()
-        )
-
-    def pick_sample(self, ids, number_of_samples=10):
+    def pick_sample(self, ids, number_of_samples=1000):
         return Company.objects.filter(
             pk__in=random.choices(list(ids), k=number_of_samples)
         )
 
-    def count_and_sample(self, ids, number_of_samples=10):
+    def count_and_sample(self, ids, number_of_samples=1000):
         return len(ids), self.pick_sample(ids, number_of_samples)
 
-    def all_companies_with_bo(self):
+
+    def _filter_snapshots(self, extra=Q()):
         return set(
-            Person.objects.filter(
-                person_type="owner", revisions__contains=[self.latest_revision().pk]
-            )
-            .values_list("company", flat=True)
+            CompanySnapshotFlags.objects.filter(
+                revision=self.latest_revision()
+            ).filter(extra)
+            .values_list("company_id", flat=True)
             .distinct()
         )
 
+
+    def all_company_ids(self):
+        return self._filter_snapshots()
+
+    def all_companies_with_bo(self):
+        return self._filter_snapshots(Q(has_bo=True))
+
     def all_companies_with_bo_persons(self):
-        return set(
-            Person.objects.filter(
-                person_type="owner",
-                revisions__contains=[self.latest_revision().pk],
-                name__len__gt=0,
-            )
-            .values_list("company", flat=True)
-            .distinct()
-        )
+        return self._filter_snapshots(Q(has_bo_persons=True))
 
     def all_companies_with_founder_persons(self):
         return set(
@@ -71,15 +125,16 @@ class GlobalStats:
 
     def all_companies_with_bo_companies(self):
         return set(
-            Person.objects.filter(
-                person_type="owner",
-                revisions__contains=[self.latest_revision().pk],
-                name__len=0,
-                was_dereferenced=False,
+            CompanySnapshotFlags.objects.filter(
+                revision=self.latest_revision(),
+                has_bo_companies=True
             )
-            .values_list("company", flat=True)
+            .values_list("company_id", flat=True)
             .distinct()
         )
+
+    def all_companies_with_only_persons_founder_and_no_bo(self):
+        return self._filter_snapshots(Q(has_only_persons_founder=True, has_bo_persons=False, has_dereferenced_bo=False))
 
     def all_companies_with_founder_only_persons(self):
         return (
@@ -164,13 +219,8 @@ class GlobalStats:
         """
         Скільки компаній, де власник є фізична особа, не вказано кінцевого вигодоодержувача
         """
-        founder_only_person = self.all_companies_with_founder_only_persons()
-        bo_person = self.all_companies_with_bo_persons()
-        bo_dereferenced = self.all_companies_with_dereferenced()
 
-        founder_only_person_no_bo = founder_only_person - bo_person - bo_dereferenced
-
-        return self.count_and_sample(founder_only_person_no_bo)
+        return self.count_and_sample(self.all_companies_with_only_persons_founder_and_no_bo())
 
     def number_of_companies_with_only_company_founder_and_no_bo(self):
         """
