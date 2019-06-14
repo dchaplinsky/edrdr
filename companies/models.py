@@ -176,7 +176,7 @@ class Company(models.Model):
                 snapshot.has_only_persons_bo = False
                 snapshot.has_only_persons_founder = False
                 snapshot.has_same_person_as_bo_and_founder = False
-                snapshot.has_same_person_as_bo_and_had = False
+                snapshot.has_same_person_as_bo_and_head = False
                 snapshot.has_very_similar_person_as_bo_and_founder = False
                 snapshot.has_very_similar_person_as_bo_and_head = False
                 snapshot.has_bo_on_occupied_soil = False
@@ -220,7 +220,7 @@ class Company(models.Model):
                     all_owner_persons |= set(p.name)
                 else:
                     if p.was_dereferenced:
-                        p.has_dereferenced_bo = True
+                        snapshot.has_dereferenced_bo = True
                     else:
                         snapshot.has_bo_companies = True
 
@@ -312,7 +312,7 @@ class Company(models.Model):
             snapshot.has_same_person_as_bo_and_founder = True
 
         if all_owner_persons & all_head_persons:
-            snapshot.has_same_person_as_bo_and_had = True
+            snapshot.has_same_person_as_bo_and_head = True
 
         snapshot.all_similar_founders_and_bos = []
 

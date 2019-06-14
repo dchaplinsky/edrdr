@@ -13,9 +13,12 @@ class Command(BaseCommand):
         "number_of_companies_with_bo_person",
         "number_of_companies_with_bo_company",
         "number_of_companies_with_only_persons_founder_and_no_bo",
-        # "number_of_companies_with_only_company_founder_and_no_bo",
-        # "number_of_companies_with_company_founder_and_no_bo",
-        # "number_of_companies_with_only_persons_founder_and_different_bo",
+        "number_of_companies_with_only_company_founder_and_no_bo",
+        "number_of_companies_with_company_founder_and_no_bo",
+        "number_of_companies_with_only_persons_founder_and_different_bo",
+        "number_of_companies_with_only_persons_founder_and_totally_different_bo",
+        "number_of_companies_with_only_persons_bo_and_same_head",
+        "number_of_companies_with_only_persons_bo_and_same_head_fuzzy",
     ]
 
     def render_sample(self, sample):

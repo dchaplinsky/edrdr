@@ -40,9 +40,7 @@ class GlobalStats:
                 )["grouped_persons_records"]
 
                 if not grouped_records:
-                    worksheet.write(
-                        curr_line, 1, "Бенефіціарів не вказано"
-                    )
+                    worksheet.write(curr_line, 1, "Бенефіціарів не вказано")
                 else:
                     for group in grouped_records:
                         worksheet.write(
@@ -53,12 +51,8 @@ class GlobalStats:
                         )
 
                         for r in group["record"]:
-                            worksheet.write(
-                                curr_line, 3, ", ".join(r.name)
-                            )
-                            worksheet.write(
-                                curr_line, 4, r.raw_record
-                            )
+                            worksheet.write(curr_line, 3, ", ".join(r.name))
+                            worksheet.write(curr_line, 4, r.raw_record)
                             curr_line += 1
 
                     curr_line -= 1
@@ -68,7 +62,6 @@ class GlobalStats:
                 worksheet.write(curr_line, 1, "Компанію не знайдено")
 
         outfile.close()
-
 
     def latest_revision(self):
         return Revision.objects.order_by("-created").first()
@@ -81,16 +74,13 @@ class GlobalStats:
     def count_and_sample(self, ids, number_of_samples=1000):
         return len(ids), self.pick_sample(ids, number_of_samples)
 
-
     def _filter_snapshots(self, extra=Q()):
         return set(
-            CompanySnapshotFlags.objects.filter(
-                revision=self.latest_revision()
-            ).filter(extra)
+            CompanySnapshotFlags.objects.filter(revision=self.latest_revision())
+            .filter(extra)
             .values_list("company_id", flat=True)
             .distinct()
         )
-
 
     def all_company_ids(self):
         return self._filter_snapshots()
@@ -126,37 +116,52 @@ class GlobalStats:
     def all_companies_with_bo_companies(self):
         return set(
             CompanySnapshotFlags.objects.filter(
-                revision=self.latest_revision(),
-                has_bo_companies=True
+                revision=self.latest_revision(), has_bo_companies=True
             )
             .values_list("company_id", flat=True)
             .distinct()
         )
 
     def all_companies_with_only_persons_founder_and_no_bo(self):
-        return self._filter_snapshots(Q(has_only_persons_founder=True, has_bo_persons=False, has_dereferenced_bo=False))
-
-    def all_companies_with_founder_only_persons(self):
-        return (
-            self.all_companies_with_founder_persons()
-            - self.all_companies_with_founder_company()
+        return self._filter_snapshots(
+            Q(has_only_persons_founder=True)
+            & Q(has_bo_persons=False)
+            & Q(has_dereferenced_bo=False)
         )
 
-    def all_companies_with_founder_only_companies(self):
-        return (
-            self.all_companies_with_founder_company()
-            - self.all_companies_with_founder_persons()
+    def all_companies_with_only_company_founder_and_no_bo(self):
+        return self._filter_snapshots(
+            Q(has_only_companies_founder=True) & Q(has_bo=False)
         )
 
-    def all_companies_with_dereferenced(self):
-        return set(
-            Person.objects.filter(
-                person_type="owner",
-                revisions__contains=[self.latest_revision().pk],
-                was_dereferenced=True,
-            )
-            .values_list("company", flat=True)
-            .distinct()
+    def all_companies_with_company_founder_and_no_bo(self):
+        return self._filter_snapshots(Q(has_founder_companies=True) & Q(has_bo=False))
+
+    def all_companies_with_only_persons_founder_and_different_bo(self):
+        return self._filter_snapshots(
+            Q(has_only_persons_founder=True)
+            & Q(has_bo_persons=True)
+            & Q(has_same_person_as_bo_and_founder=False)
+        )
+
+    def all_companies_with_only_persons_founder_and_totally_different_bo(self):
+        return self._filter_snapshots(
+            Q(has_only_persons_founder=True)
+            & Q(has_bo_persons=True)
+            & Q(has_same_person_as_bo_and_founder=False)
+            & Q(has_very_similar_person_as_bo_and_founder=False)
+        )
+
+    def all_companies_with_only_persons_bo_and_same_head(self):
+        return self._filter_snapshots(
+            Q(has_bo_persons=True)
+            & Q(has_same_person_as_bo_and_head=True)
+        )
+
+    def all_companies_with_only_persons_bo_and_same_head_fuzzy(self):
+        return self._filter_snapshots(
+            Q(has_bo_persons=True)
+            & (Q(has_same_person_as_bo_and_head=True) | Q(has_very_similar_person_as_bo_and_head=True))
         )
 
     def number_of_companies(self):
@@ -188,78 +193,66 @@ class GlobalStats:
         ids = self.all_companies_with_bo_companies()
         return self.count_and_sample(ids)
 
-    def compare_founder_persons_and_bo_persons(self, edrpou):
-        bos = Person.objects.filter(
-            company=edrpou,
-            person_type="owner",
-            name__len__gt=0,
-            revisions__contains=[self.latest_revision().pk],
-        ).values_list("name", flat=True)
-
-        all_bos = set()
-        for b in bos:
-            all_bos |= set(b)
-
-        founders = Person.objects.filter(
-            company=edrpou,
-            person_type="founder",
-            name__len__gt=0,
-            revisions__contains=[self.latest_revision().pk],
-        ).values_list("name", flat=True)
-        all_founders = set()
-        for f in founders:
-            all_founders |= set(f)
-
-        intersection = all_bos & all_founders
-        if not intersection:
-            print(all_bos, all_founders)
-        return all_bos & all_founders
 
     def number_of_companies_with_only_persons_founder_and_no_bo(self):
         """
         Скільки компаній, де власник є фізична особа, не вказано кінцевого вигодоодержувача
         """
 
-        return self.count_and_sample(self.all_companies_with_only_persons_founder_and_no_bo())
+        return self.count_and_sample(
+            self.all_companies_with_only_persons_founder_and_no_bo()
+        )
 
     def number_of_companies_with_only_company_founder_and_no_bo(self):
         """
         Скільки компаній, де власником є тільки юридичні особи, не вказано кінцевого вигоодержувача
         """
-        founder_only_company = self.all_companies_with_founder_only_companies()
-        bo = self.all_companies_with_bo()
 
-        founder_only_company_no_bo = founder_only_company - bo
-
-        return self.count_and_sample(founder_only_company_no_bo)
+        return self.count_and_sample(
+            self.all_companies_with_only_company_founder_and_no_bo()
+        )
 
     def number_of_companies_with_company_founder_and_no_bo(self):
         """
         Скільки компаній, де власником є хоча б одна юридична особа, не вказано кінцевого вигоодержувача
         """
-        founder_company = self.all_companies_with_founder_company()
 
-        bo = self.all_companies_with_bo()
-
-        founder_only_company_no_bo = founder_company - bo
-
-        return self.count_and_sample(founder_only_company_no_bo)
+        return self.count_and_sample(
+            self.all_companies_with_company_founder_and_no_bo()
+        )
 
     def number_of_companies_with_only_persons_founder_and_different_bo(self):
         """
         У скількох компаніях, де власниками є тільки фізичні особи, та є кінцеві вигодоодержувачі-фізособи, кінцеві вигодоодержувачі відрізняються від власників
         """
-        founder_only_person = self.all_companies_with_founder_only_persons()
 
-        persons_bo = self.all_companies_with_bo_persons()
+        return self.count_and_sample(
+            self.all_companies_with_only_persons_founder_and_different_bo()
+        )
 
-        founder_only_person_with_bo_persons = founder_only_person & persons_bo
+    def number_of_companies_with_only_persons_founder_and_totally_different_bo(self):
+        """
+        У скількох компаніях, де власниками є тільки фізичні особи, та є кінцеві вигодоодержувачі-фізособи, кінцеві вигодоодержувачі відрізняються від власників (враховуючи неточності у написанні ПІБ)
+        """
 
-        for i, pk in enumerate(founder_only_person_with_bo_persons):
-            compare_them = self.compare_founder_persons_and_bo_persons(pk)
-            if not compare_them:
-                print(pk, compare_them)
-            if i > 1000:
-                break
+        return self.count_and_sample(
+            self.all_companies_with_only_persons_founder_and_totally_different_bo()
+        )
 
-        return self.count_and_sample(founder_only_person_with_bo_persons)
+    def number_of_companies_with_only_persons_bo_and_same_head(self):
+        """
+        У скількох компаніях де кінцевим вигодоодержувачем є тільки фізособи директор вказаний як кінцевий вигодоодержувач
+        """
+
+        return self.count_and_sample(
+            self.all_companies_with_only_persons_bo_and_same_head()
+        )
+
+    def number_of_companies_with_only_persons_bo_and_same_head_fuzzy(self):
+        """
+        У скількох компаніях де кінцевим вигодоодержувачем є тільки фізособи директор вказаний як кінцевий вигодоодержувач (враховуючи неточності у написанні ПІБ)
+        """
+
+        return self.count_and_sample(
+            self.all_companies_with_only_persons_bo_and_same_head_fuzzy()
+        )

@@ -29,8 +29,11 @@ class Command(BaseCommand):
         qs = Company.objects.all()
 
         mass_registration = CompanyRecord.objects.mass_registration_addresses(options["revision_id"])
+        total = qs.count()
+        if options["limit"] is not None:
+            total = min(total, options["limit"])
 
-        for i, company in tqdm(enumerate(qs.iterator()), total=min(qs.count(), options["limit"])):
+        for i, company in tqdm(enumerate(qs.iterator()), total=total):
             company.take_snapshot_of_flags(options["revision_id"], options["force"], mass_registration)
             
             if options["limit"] is not None and i + 1 > options["limit"]:
