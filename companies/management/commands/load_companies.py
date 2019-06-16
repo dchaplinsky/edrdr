@@ -374,6 +374,16 @@ class Command(BaseCommand):
         with open(full_path, 'rb') as fp:
             self.load_file(fp, guid, revision, timestamp, overwrite, ext=ext, url=data_url)
 
+    @staticmethod
+    def cleanup_countries(list_of_countries):
+        return list(
+            set(
+                filter(
+                    lambda x: x not in ["пряме", "прямий", "республіка", "причина", "флорида", "лакатамія"],
+                    map(str.strip, list_of_countries),
+                )
+            )
+        )
 
     def load_file(self, fp, guid, revision_id, timestamp, overwrite, ext, subrevision_id=None, url=""):
         # At first, let's try to create Revision. Revision is a single dump
@@ -494,7 +504,7 @@ class Command(BaseCommand):
                                     raw_record=f["raw_record"],
                                     name=f["Name"],
                                     address=f["Address of residence"],
-                                    country=f["Country of residence"],
+                                    country=self.cleanup_countries(f["Country of residence"]),
                                     revisions=[revision.pk],
                                     bo_is_absent=f["BO is absent"],
                                 )
@@ -520,7 +530,7 @@ class Command(BaseCommand):
                                     raw_record=f["raw_record"],
                                     name=f["Name"],
                                     address=f["Address of residence"],
-                                    country=f["Country of residence"],
+                                    country=self.cleanup_countries(f["Country of residence"]),
                                     revisions=[revision.pk],
                                 )
                                 persons_to_create.append(person)
