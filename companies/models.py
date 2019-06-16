@@ -213,7 +213,7 @@ class Company(models.Model):
                 all_bo_countries |= set(p.country)
 
                 if p.bo_is_absent and company_is_acting:
-                    self.acting_and_explicitly_stated_that_has_no_bo = True
+                    snapshot.acting_and_explicitly_stated_that_has_no_bo = True
 
                 if p.name:
                     snapshot.has_bo_persons = True

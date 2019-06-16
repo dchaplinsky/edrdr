@@ -19,6 +19,10 @@ class Command(BaseCommand):
         "number_of_companies_with_only_persons_founder_and_totally_different_bo",
         "number_of_companies_with_only_persons_bo_and_same_head",
         "number_of_companies_with_only_persons_bo_and_same_head_fuzzy",
+        "number_of_companies_with_bo_in_crimea",
+        "number_of_companies_with_bo_on_occupied_soil",
+        "number_of_companies_that_has_changes_in_bo",
+        "number_of_companies_that_is_acting_and_explicitly_stated_that_has_no_bo",
     ]
 
     def render_sample(self, sample):

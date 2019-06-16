@@ -68,7 +68,7 @@ class GlobalStats:
 
     def pick_sample(self, ids, number_of_samples=1000):
         return Company.objects.filter(
-            pk__in=random.choices(list(ids), k=number_of_samples)
+            pk__in=random.choices(list(ids), k=min(number_of_samples, len(ids)))
         )
 
     def count_and_sample(self, ids, number_of_samples=1000):
@@ -164,6 +164,27 @@ class GlobalStats:
             & (Q(has_same_person_as_bo_and_head=True) | Q(has_very_similar_person_as_bo_and_head=True))
         )
 
+    def all_companies_with_bo_in_crimea(self):
+        return self._filter_snapshots(
+            Q(has_bo_in_crimea=True)
+        )
+
+    def all_companies_with_bo_on_occupied_soil(self):
+        return self._filter_snapshots(
+            Q(has_bo_on_occupied_soil=True)
+        )
+
+    def all_companies_that_has_changes_in_bo(self):
+        return self._filter_snapshots(
+            Q(has_changes_in_bo=True)
+        )
+
+    def all_companies_that_is_acting_and_explicitly_stated_that_has_no_bo(self):
+        return self._filter_snapshots(
+            Q(acting_and_explicitly_stated_that_has_no_bo=True)
+        )
+
+
     def number_of_companies(self):
         """
         Скільки в реєстрі компаній
@@ -255,4 +276,38 @@ class GlobalStats:
 
         return self.count_and_sample(
             self.all_companies_with_only_persons_bo_and_same_head_fuzzy()
+        )
+
+
+    def number_of_companies_with_bo_in_crimea(self):
+        """
+        У скількох компаніях бенефіціарним власником вказано громадян України, прописка яких на окупованих територіях (Крим)
+        """
+
+        return self.count_and_sample(self.all_companies_with_bo_in_crimea())
+
+
+    def number_of_companies_with_bo_on_occupied_soil(self):
+        """
+        У скількох компаніях бенефіціарним власником вказано громадян України, прописка яких на окупованих територіях (ОРДЛО)
+        """
+
+        return self.count_and_sample(self.all_companies_with_bo_on_occupied_soil())
+
+
+    def number_of_companies_that_has_changes_in_bo(self):
+        """
+        Кількість компаній, де змінювався бенефіціарний власник
+        """
+
+        return self.count_and_sample(self.all_companies_that_has_changes_in_bo())
+
+
+    def number_of_companies_that_is_acting_and_explicitly_stated_that_has_no_bo(self):
+        """
+        Скільки компаній подало що бенефіціарний власник “відсутній”
+        """
+
+        return self.count_and_sample(
+            self.all_companies_that_is_acting_and_explicitly_stated_that_has_no_bo()
         )
