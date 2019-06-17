@@ -23,6 +23,7 @@ class Command(BaseCommand):
         "number_of_companies_with_bo_on_occupied_soil",
         "number_of_companies_that_has_changes_in_bo",
         "number_of_companies_that_is_acting_and_explicitly_stated_that_has_no_bo",
+        "number_of_companies_with_foreign_bo",
     ]
 
     def render_sample(self, sample):

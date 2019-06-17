@@ -21,47 +21,56 @@ class GlobalStats:
         worksheet.write(curr_line, 3, "Власник (ПІБ)")
         worksheet.write(curr_line, 4, "Власник (Повний запис)")
         dt_format = outfile.add_format({"num_format": "dd/mm/yy"})
+        header_format = outfile.add_format({'bold': True, 'align': 'center_across'})
 
-        for i, company_edrpou in tqdm(enumerate(ids)):
 
-            try:
+        if isinstance(ids, list):
+            ids = {"": ids}
+
+        for section, values in ids.items():
+            if section:
+                worksheet.merge_range(curr_line, 0, curr_line, 4, section, header_format)
                 curr_line += 1
-                if isinstance(company_edrpou, Company):
-                    company = company_edrpou
-                    company_edrpou = company.pk
-                else:
-                    company_edrpou = company_edrpou.strip().lstrip("0")
-                    company = Company.objects.get(pk=company_edrpou)
 
-                worksheet.write(curr_line, 0, company_edrpou)
+            for company_edrpou in enumerate(values):
+                try:
+                    curr_line += 1
+                    if isinstance(company_edrpou, Company):
+                        company = company_edrpou
+                        company_edrpou = company.pk
+                    else:
+                        company_edrpou = company_edrpou.strip().lstrip("0")
+                        company = Company.objects.get(pk=company_edrpou)
 
-                grouped_records = company.get_grouped_record(
-                    persons_filter_clause=models.Q(person_type="owner")
-                )["grouped_persons_records"]
+                    worksheet.write(curr_line, 0, company_edrpou)
 
-                if not grouped_records:
-                    worksheet.write(curr_line, 1, "Бенефіціарів не вказано")
-                else:
-                    for group in grouped_records:
-                        worksheet.write(
-                            curr_line, 1, group["start_revision"].created, dt_format
-                        )
-                        worksheet.write(
-                            curr_line, 2, group["finish_revision"].created, dt_format
-                        )
+                    grouped_records = company.get_grouped_record(
+                        persons_filter_clause=models.Q(person_type="owner")
+                    )["grouped_persons_records"]
 
-                        for r in group["record"]:
-                            worksheet.write(curr_line, 3, ", ".join(r.name))
-                            worksheet.write(curr_line, 4, r.raw_record)
-                            curr_line += 1
+                    if not grouped_records:
+                        worksheet.write(curr_line, 1, "Бенефіціарів не вказано")
+                    else:
+                        for group in grouped_records:
+                            worksheet.write(
+                                curr_line, 1, group["start_revision"].created, dt_format
+                            )
+                            worksheet.write(
+                                curr_line, 2, group["finish_revision"].created, dt_format
+                            )
 
-                    curr_line -= 1
+                            for r in group["record"]:
+                                worksheet.write(curr_line, 3, ", ".join(r.name))
+                                worksheet.write(curr_line, 4, r.raw_record)
+                                curr_line += 1
 
-            except Company.DoesNotExist:
-                worksheet.write(curr_line, 0, company_edrpou)
-                worksheet.write(curr_line, 1, "Компанію не знайдено")
+                        curr_line -= 1
 
-        outfile.close()
+                except Company.DoesNotExist:
+                    worksheet.write(curr_line, 0, company_edrpou)
+                    worksheet.write(curr_line, 1, "Компанію не знайдено")
+
+            outfile.close()
 
     def latest_revision(self):
         return Revision.objects.order_by("-created").first()
@@ -184,6 +193,18 @@ class GlobalStats:
             Q(acting_and_explicitly_stated_that_has_no_bo=True)
         )
 
+    def all_companies_with_foreign_bo(self):
+        return self._filter_snapshots(
+            ~Q(all_bo_countries__len=0) & ~Q(all_bo_countries=["україна"])
+        )
+
+    def all_companies_with_same_bo(self):
+        return set(
+            Person.objects.filter(
+                person_type="owner", 
+                revisions__contains=[self.latest_revision()]
+            ).values("name").annotate(cnt=Count("name")).filter(cnt__gte=10).values_list()
+        )
 
     def number_of_companies(self):
         """
@@ -311,3 +332,14 @@ class GlobalStats:
         return self.count_and_sample(
             self.all_companies_that_is_acting_and_explicitly_stated_that_has_no_bo()
         )
+
+
+    def number_of_companies_with_foreign_bo(self):
+        """
+        У скількох компаніях бенефіціарним власником вказано іноземців
+        """
+
+        return self.count_and_sample(
+            self.all_companies_with_foreign_bo()
+        )
+

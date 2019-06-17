@@ -14,7 +14,7 @@ from django.forms.models import model_to_dict
 from Levenshtein import jaro
 from fuzzywuzzy import fuzz
 from tokenize_uk import tokenize_words
-from companies.exceptions import StatusDoesntExist
+from companies.exceptions import StatusDoesntExist, TooManyVariantsError
 
 from names_translator.name_utils import parse_and_generate, autocomplete_suggestions
 
@@ -144,6 +144,30 @@ class Company(models.Model):
             jaro(name1, " ".join(opt)) for opt in islice(permutations(splits), limit)
         )
 
+
+    def compare_two_list_of_names(self, list_a, list_b, cutoff=0.93):
+        result = []
+
+        if len(list_a) * len(list_b) > 1000:
+            raise TooManyVariantsError()
+
+        for i, (side_a, side_b) in enumerate(
+            product(list_a, list_b)
+        ):
+            if side_a == side_b:
+                continue
+
+            score = self.compare_two_names(side_a, side_b)
+            if score > cutoff:
+                result.append(
+                    {"side_a": side_a, "side_b": side_b, "score": score}
+                )
+
+            if i > 1000:
+                break
+
+        return result
+
     def take_snapshot_of_flags(
         self, revision=None, force=False, mass_registration=None
     ):
@@ -184,6 +208,7 @@ class Company(models.Model):
                 snapshot.acting_and_explicitly_stated_that_has_no_bo = False
                 snapshot.has_mass_registration_address = False
                 snapshot.has_changes_in_bo = False
+                snapshot.has_changes_in_ownership = False
             else:
                 return
         else:
@@ -206,6 +231,7 @@ class Company(models.Model):
         all_owner_persons = set()
         all_head_persons = set()
         all_bo_countries = set()
+        all_founder_countries = set()
 
         for p in persons:
             if p.person_type == "owner":
@@ -245,6 +271,7 @@ class Company(models.Model):
                                     break
 
             if p.person_type == "founder":
+                all_founder_countries |= set(p.country)
                 if p.name:
                     snapshot.has_founder_persons = True
                     all_founder_persons |= set(p.name)
@@ -257,44 +284,61 @@ class Company(models.Model):
 
         if snapshot.has_bo_persons:
             grouped_records = self.get_grouped_record(
-                persons_filter_clause=models.Q(person_type="owner")
+                persons_filter_clause=models.Q(person_type__in=["owner", "founder"])
             )["grouped_persons_records"]
 
-            prev_names = None
+            prev_names = {
+                "founder": None,
+                "owner": None
+            }
+
+            flags_mapping = {
+                "owner": {
+                    "flag_field": "has_changes_in_ownership",
+                    "diff_field": "ownership_diff"
+                },
+                "founder": {
+                    "flag_field": "has_changes_in_bo",
+                    "diff_field": "bo_diff"
+                },
+            }
+
             for group in grouped_records:
-                names = set()
+                names = {
+                    "founder": set(),
+                    "owner": set()
+                }
+
                 for r in group["record"]:
-                    names |= set(r.name)
+                    names[r.person_type] |= set(r.name)
 
-                if prev_names is not None and names != prev_names:
-                    on_the_left = prev_names - names
-                    on_the_right = names - prev_names
+                for k in flags_mapping:
+                    if prev_names[k] is not None and names[k] != prev_names[k]:
+                        on_the_left = prev_names[k] - names[k]
+                        on_the_right = names[k] - prev_names[k]
 
-                    if len(on_the_left) == len(on_the_right):
-                        ratio = fuzz.token_set_ratio(" ".join(on_the_left), " ".join(on_the_right))
-                        if ratio >= 90:
-                            pass
+                        if len(on_the_left) == len(on_the_right):
+                            ratio = fuzz.token_set_ratio(" ".join(on_the_left), " ".join(on_the_right))
+                            if ratio >= 90:
+                                pass
+                            else:
+                                setattr(snapshot, flags_mapping[k]["flag_field"], True)
+                                setattr(snapshot, flags_mapping[k]["diff_field"], {
+                                    "prev": list(on_the_left),
+                                    "next": list(on_the_right),
+                                    "ratio": ratio
+                                })
                         else:
-                            snapshot.has_changes_in_bo = True
-                            snapshot.bo_diff = {
+                            setattr(snapshot, flags_mapping[k]["flag_field"], True)
+                            setattr(snapshot, flags_mapping[k]["diff_field"], {
                                 "prev": list(on_the_left),
                                 "next": list(on_the_right),
-                                "ratio": ratio
-                            }
-                            break
-                    else:
-                        snapshot.has_changes_in_bo = True
-                        snapshot.bo_diff = {
-                            "prev": list(on_the_left),
-                            "next": list(on_the_right),
-                            "ratio": 100
-                        }
-                        break
+                                "ratio": 100
+                            })
 
                 prev_names = names
-                if snapshot.has_changes_in_bo:
+                if snapshot.has_changes_in_bo and snapshot.has_changes_in_ownership:
                     break
-
 
         if snapshot.has_bo_persons and not snapshot.has_bo_companies:
             snapshot.has_only_persons_bo = True
@@ -314,50 +358,40 @@ class Company(models.Model):
         if all_owner_persons & all_head_persons:
             snapshot.has_same_person_as_bo_and_head = True
 
-        snapshot.all_similar_founders_and_bos = []
 
-        if len(all_owner_persons) * len(all_founder_persons) > 1000:
+        snapshot.all_similar_founders_and_bos = []
+        try:
+            found_something = self.compare_two_list_of_names(all_founder_persons, all_owner_persons)
+            if found_something:
+                snapshot.all_similar_founders_and_bos = found_something
+                snapshot.has_very_similar_person_as_bo_and_founder = True
+        except TooManyVariantsError:
             print("Too many persons to compare for company {}".format(self.pk))
 
-        for i, (owner, founder) in enumerate(
-            product(all_owner_persons, all_founder_persons)
-        ):
-            if owner == founder:
-                continue
-
-            score = self.compare_two_names(owner, founder)
-            if score > 0.93:
-                snapshot.all_similar_founders_and_bos.append(
-                    {"owner": owner, "founder": founder, "score": score}
-                )
-
-                snapshot.has_very_similar_person_as_bo_and_founder = True
-
-            if i > 1000:
-                break
 
         snapshot.all_similar_heads_and_bos = []
-
-        if len(all_owner_persons) * len(all_head_persons) > 1000:
+        try:
+            found_something = self.compare_two_list_of_names(all_head_persons, all_owner_persons)
+            if found_something:
+                snapshot.all_similar_heads_and_bos = found_something
+                snapshot.has_very_similar_person_as_bo_and_head = True
+        except TooManyVariantsError:
             print("Too many persons to compare for company {}".format(self.pk))
 
-        for i, (owner, head) in enumerate(product(all_owner_persons, all_head_persons)):
-            if owner == head:
-                continue
 
-            score = self.compare_two_names(owner, head)
-            if score > 0.93:
-                snapshot.all_similar_heads_and_bos.append(
-                    {"owner": owner, "head": head, "score": score}
-                )
-                snapshot.has_very_similar_person_as_bo_and_head = True
-
-            if i > 1000:
-                break
+        snapshot.all_similar_heads_and_founders = []
+        try:
+            found_something = self.compare_two_list_of_names(all_head_persons, all_founder_persons)
+            if found_something:
+                snapshot.all_similar_heads_and_founders = found_something
+                snapshot.has_very_similar_person_as_head_and_founder = True
+        except TooManyVariantsError:
+            print("Too many persons to compare for company {}".format(self.pk))
 
         snapshot.all_owner_persons = list(all_owner_persons)
         snapshot.all_founder_persons = list(all_founder_persons)
         snapshot.all_bo_countries = list(all_bo_countries)
+        snapshot.all_founder_countries = list(all_founder_countries)
 
         snapshot.save()
 
@@ -789,19 +823,31 @@ class CompanySnapshotFlags(models.Model):
     )
     has_same_person_as_bo_and_founder = models.BooleanField(default=False)
     has_same_person_as_bo_and_head = models.BooleanField(default=False)
+    has_same_person_as_head_and_founder = models.BooleanField(default=False)
 
     has_very_similar_person_as_bo_and_founder = models.BooleanField(default=False)
     has_very_similar_person_as_bo_and_head = models.BooleanField(default=False)
+    has_very_similar_person_as_head_and_founder = models.BooleanField(default=False)
+
     all_similar_founders_and_bos = JSONField(
-        default=list, verbose_name="Результати порівняння бенефіціарів та власників"
+        default=list, verbose_name="Результати порівняння бенефіціарів та засновників"
     )
     all_similar_heads_and_bos = JSONField(
         default=list, verbose_name="Результати порівняння бенефіціарів та директорів"
     )
+    all_similar_heads_and_founders = JSONField(
+        default=list, verbose_name="Результати порівняння директорів за засновників"
+    )
+
     all_bo_countries = ArrayField(
         models.TextField(),
         default=list,
         verbose_name="Усі країни окрім України, до яких прив'язані БО",
+    )
+    all_founder_countries = ArrayField(
+        models.TextField(),
+        default=list,
+        verbose_name="Усі країни окрім України, до яких прив'язані засновники",
     )
     has_bo_on_occupied_soil = models.BooleanField(default=False)
     has_bo_in_crimea = models.BooleanField(default=False)
@@ -809,5 +855,8 @@ class CompanySnapshotFlags(models.Model):
     not_present_in_revision = models.BooleanField(default=False)
     has_mass_registration_address = models.BooleanField(default=False)
     has_changes_in_bo = models.BooleanField(default=False)
+    has_changes_in_ownership = models.BooleanField(default=False)
+
     bo_diff = JSONField(default=dict, verbose_name="Зміни в БО")
+    ownership_diff = JSONField(default=dict, verbose_name="Зміни в власності")
 
