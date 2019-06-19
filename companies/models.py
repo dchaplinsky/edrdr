@@ -243,7 +243,7 @@ class Company(models.Model):
 
                 if p.name:
                     snapshot.has_bo_persons = True
-                    all_owner_persons |= set(p.name)
+                    all_owner_persons |= set(map(lambda s: s.strip().lower(), p.name))
                 else:
                     if p.was_dereferenced:
                         snapshot.has_dereferenced_bo = True
@@ -274,13 +274,13 @@ class Company(models.Model):
                 all_founder_countries |= set(p.country)
                 if p.name:
                     snapshot.has_founder_persons = True
-                    all_founder_persons |= set(p.name)
+                    all_founder_persons |= set(map(lambda s: s.strip().lower(), p.name))
                 else:
                     snapshot.has_founder_companies = True
 
             if p.person_type == "head":
                 if p.name:
-                    all_head_persons |= set(p.name)
+                    all_head_persons |= set(map(lambda s: s.strip().lower(), p.name))
 
         if snapshot.has_bo_persons:
             grouped_records = self.get_grouped_record(
@@ -357,7 +357,6 @@ class Company(models.Model):
 
         if all_owner_persons & all_head_persons:
             snapshot.has_same_person_as_bo_and_head = True
-
 
         snapshot.all_similar_founders_and_bos = []
         try:
@@ -608,13 +607,13 @@ class CompanyRecordManager(models.Manager):
 
         qs = self.filter(revisions__contains=[revision])
 
-        return {
-            rec["shortened_validated_location"]: rec["addr_count"]
+        return OrderedDict(
+            (rec["shortened_validated_location"], rec["addr_count"])
             for rec in qs.values("shortened_validated_location")
             .annotate(addr_count=models.Count("shortened_validated_location"))
             .filter(addr_count__gte=cutoff)
             .order_by("-addr_count")
-        }
+        )
 
 
 class CompanyRecord(models.Model):
