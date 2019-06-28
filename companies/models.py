@@ -210,6 +210,7 @@ class Company(models.Model):
                 snapshot.has_discrepancy_with_declarations = False
                 snapshot.self_owned = False
                 snapshot.indirectly_self_owned = False
+                snapshot.has_same_person_as_head_and_founder = False
             else:
                 return
         else:
@@ -361,6 +362,9 @@ class Company(models.Model):
 
         if all_owner_persons & all_head_persons:
             snapshot.has_same_person_as_bo_and_head = True
+
+        if all_founder_persons & all_head_persons:
+            snapshot.has_same_person_as_head_and_founder = True
 
         snapshot.all_similar_founders_and_bos = []
         try:
