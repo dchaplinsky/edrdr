@@ -144,24 +144,19 @@ class Company(models.Model):
             jaro(name1, " ".join(opt)) for opt in islice(permutations(splits), limit)
         )
 
-
     def compare_two_list_of_names(self, list_a, list_b, cutoff=0.93):
         result = []
 
         if len(list_a) * len(list_b) > 1000:
             raise TooManyVariantsError()
 
-        for i, (side_a, side_b) in enumerate(
-            product(list_a, list_b)
-        ):
+        for i, (side_a, side_b) in enumerate(product(list_a, list_b)):
             if side_a == side_b:
                 continue
 
             score = self.compare_two_names(side_a, side_b)
             if score > cutoff:
-                result.append(
-                    {"side_a": side_a, "side_b": side_b, "score": score}
-                )
+                result.append({"side_a": side_a, "side_b": side_b, "score": score})
 
             if i > 1000:
                 break
@@ -209,6 +204,12 @@ class Company(models.Model):
                 snapshot.has_mass_registration_address = False
                 snapshot.has_changes_in_bo = False
                 snapshot.has_changes_in_ownership = False
+                snapshot.has_pep_owner = False
+                snapshot.had_pep_owner_in_the_past = False
+                snapshot.has_undeclared_pep_owner = False
+                snapshot.has_discrepancy_with_declarations = False
+                snapshot.self_owned = False
+                snapshot.indirectly_self_owned = False
             else:
                 return
         else:
@@ -223,7 +224,9 @@ class Company(models.Model):
             snapshot.not_present_in_revision = True
         else:
             company_is_acting = latest_record.status == 1
-            snapshot.has_mass_registration_address = latest_record.shortened_validated_location in mass_registration
+            snapshot.has_mass_registration_address = (
+                latest_record.shortened_validated_location in mass_registration
+            )
 
         persons = Person.objects.filter(company=self, revisions__contains=[revision.pk])
 
@@ -287,27 +290,18 @@ class Company(models.Model):
                 persons_filter_clause=models.Q(person_type__in=["owner", "founder"])
             )["grouped_persons_records"]
 
-            prev_names = {
-                "founder": None,
-                "owner": None
-            }
+            prev_names = {"founder": None, "owner": None}
 
             flags_mapping = {
                 "owner": {
                     "flag_field": "has_changes_in_ownership",
-                    "diff_field": "ownership_diff"
+                    "diff_field": "ownership_diff",
                 },
-                "founder": {
-                    "flag_field": "has_changes_in_bo",
-                    "diff_field": "bo_diff"
-                },
+                "founder": {"flag_field": "has_changes_in_bo", "diff_field": "bo_diff"},
             }
 
             for group in grouped_records:
-                names = {
-                    "founder": set(),
-                    "owner": set()
-                }
+                names = {"founder": set(), "owner": set()}
 
                 for r in group["record"]:
                     names[r.person_type] |= set(r.name)
@@ -318,23 +312,33 @@ class Company(models.Model):
                         on_the_right = names[k] - prev_names[k]
 
                         if len(on_the_left) == len(on_the_right):
-                            ratio = fuzz.token_set_ratio(" ".join(on_the_left), " ".join(on_the_right))
+                            ratio = fuzz.token_set_ratio(
+                                " ".join(on_the_left), " ".join(on_the_right)
+                            )
                             if ratio >= 90:
                                 pass
                             else:
                                 setattr(snapshot, flags_mapping[k]["flag_field"], True)
-                                setattr(snapshot, flags_mapping[k]["diff_field"], {
-                                    "prev": list(on_the_left),
-                                    "next": list(on_the_right),
-                                    "ratio": ratio
-                                })
+                                setattr(
+                                    snapshot,
+                                    flags_mapping[k]["diff_field"],
+                                    {
+                                        "prev": list(on_the_left),
+                                        "next": list(on_the_right),
+                                        "ratio": ratio,
+                                    },
+                                )
                         else:
                             setattr(snapshot, flags_mapping[k]["flag_field"], True)
-                            setattr(snapshot, flags_mapping[k]["diff_field"], {
-                                "prev": list(on_the_left),
-                                "next": list(on_the_right),
-                                "ratio": 100
-                            })
+                            setattr(
+                                snapshot,
+                                flags_mapping[k]["diff_field"],
+                                {
+                                    "prev": list(on_the_left),
+                                    "next": list(on_the_right),
+                                    "ratio": 100,
+                                },
+                            )
 
                 prev_names = names
                 if snapshot.has_changes_in_bo and snapshot.has_changes_in_ownership:
@@ -360,27 +364,31 @@ class Company(models.Model):
 
         snapshot.all_similar_founders_and_bos = []
         try:
-            found_something = self.compare_two_list_of_names(all_founder_persons, all_owner_persons)
+            found_something = self.compare_two_list_of_names(
+                all_founder_persons, all_owner_persons
+            )
             if found_something:
                 snapshot.all_similar_founders_and_bos = found_something
                 snapshot.has_very_similar_person_as_bo_and_founder = True
         except TooManyVariantsError:
             print("Too many persons to compare for company {}".format(self.pk))
 
-
         snapshot.all_similar_heads_and_bos = []
         try:
-            found_something = self.compare_two_list_of_names(all_head_persons, all_owner_persons)
+            found_something = self.compare_two_list_of_names(
+                all_head_persons, all_owner_persons
+            )
             if found_something:
                 snapshot.all_similar_heads_and_bos = found_something
                 snapshot.has_very_similar_person_as_bo_and_head = True
         except TooManyVariantsError:
             print("Too many persons to compare for company {}".format(self.pk))
 
-
         snapshot.all_similar_heads_and_founders = []
         try:
-            found_something = self.compare_two_list_of_names(all_head_persons, all_founder_persons)
+            found_something = self.compare_two_list_of_names(
+                all_head_persons, all_founder_persons
+            )
             if found_something:
                 snapshot.all_similar_heads_and_founders = found_something
                 snapshot.has_very_similar_person_as_head_and_founder = True
@@ -391,6 +399,28 @@ class Company(models.Model):
         snapshot.all_founder_persons = list(all_founder_persons)
         snapshot.all_bo_countries = list(all_bo_countries)
         snapshot.all_founder_countries = list(all_founder_countries)
+
+        if self.peps.filter(years__contains=[2018], from_declaration=True).exists():
+            snapshot.has_pep_owner = True
+            pep_bo = self.peps.filter(years__contains=[2018], from_declaration=True).first()
+
+            for person in all_owner_persons:
+                if self.compare_two_names(person, pep_bo.person) > 0.93:
+                    break
+            else:
+                snapshot.has_discrepancy_with_declarations = True
+
+        if self.peps.filter(from_declaration=True).exclude(years__contains=[2018]).exists():
+            snapshot.had_pep_owner_in_the_past = True
+
+        if self.peps.filter(from_declaration=False).exists():
+            snapshot.has_undeclared_pep_owner = True
+
+        if self.self_owned.filter(level=1).exists():
+            snapshot.self_owned = True
+
+        if self.self_owned.filter(level__gt=1).exists():
+            snapshot.indirectly_self_owned = True
 
         snapshot.save()
 
@@ -802,6 +832,7 @@ class CompanySnapshotFlags(models.Model):
         related_name="snapshot_stats",
     )
 
+    charter_capital = models.FloatField(null=True, default=None)
     has_bo = models.BooleanField(default=False)
     has_bo_persons = models.BooleanField(default=False)
     has_bo_companies = models.BooleanField(default=False)
@@ -859,3 +890,33 @@ class CompanySnapshotFlags(models.Model):
     bo_diff = JSONField(default=dict, verbose_name="Зміни в БО")
     ownership_diff = JSONField(default=dict, verbose_name="Зміни в власності")
 
+    has_pep_owner = models.BooleanField(default=False)
+    had_pep_owner_in_the_past = models.BooleanField(default=False)
+    has_undeclared_pep_owner = models.BooleanField(default=False)
+    has_discrepancy_with_declarations = models.BooleanField(default=False)
+    self_owned = models.BooleanField(default=False)
+    indirectly_self_owned = models.BooleanField(default=False)
+
+
+class PEPOwner(models.Model):
+    years = ArrayField(
+        models.IntegerField(),
+        default=list,
+        verbose_name="Роки в котрих декларувалася інформація про БО",
+    )
+    person = models.CharField(max_length=100, verbose_name="Особа ПЕП")
+    person_url = models.URLField(max_length=100, verbose_name="Посилання на pep.org.ua")
+    from_declaration = models.BooleanField(default=False, verbose_name="Зв'язок утворений з інформації з декларації")
+    company = models.ForeignKey(
+        Company, on_delete=models.CASCADE, verbose_name="Компанія", related_name="peps"
+    )
+
+    def __str__(self):
+        return "{} є бенефіціарним власником {}".format(self.person, self.company_id)
+
+
+class SelfOwned(models.Model):
+    company = models.ForeignKey(
+        Company, on_delete=models.CASCADE, verbose_name="Компанія", related_name="self_owned"
+    )
+    level = models.IntegerField(default=1)
