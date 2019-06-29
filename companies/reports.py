@@ -56,8 +56,9 @@ class GlobalStats:
                         ).first()
 
                         latest_founder_recs = Person.objects.filter(
-                            company_id=int(company_edrpou), revisions__contains=[rev.pk],
-                            person_type="founder"
+                            company_id=int(company_edrpou),
+                            revisions__contains=[rev.pk],
+                            person_type="founder",
                         ).values_list("name", flat=True)
 
                         worksheet.write_url(
@@ -77,14 +78,21 @@ class GlobalStats:
                             worksheet.write(
                                 curr_line,
                                 1,
-                                latest_company_rec.short_name or latest_company_rec.name,
+                                latest_company_rec.short_name
+                                or latest_company_rec.name,
                             )
 
                         if latest_founder_recs:
                             worksheet.write(
                                 curr_line,
                                 2,
-                                ", ".join(set(name for rec in latest_founder_recs for name in rec))
+                                ", ".join(
+                                    set(
+                                        name
+                                        for rec in latest_founder_recs
+                                        for name in rec
+                                    )
+                                ),
                             )
 
                         if not grouped_records:
@@ -289,6 +297,50 @@ class GlobalStats:
 
     def all_companies_with_ids(self, ids):
         return self._filter_snapshots(Q(company_id__in=ids))
+
+    def all_companies_with_pep_owner(self):
+        return self._filter_snapshots(Q(has_pep_owner=True))
+
+    def all_companies_with_pep_owner_in_the_past(self):
+        return self._filter_snapshots(Q(had_pep_owner_in_the_past=True))
+
+    def all_companies_with_undeclared_pep_owner(self):
+        return self._filter_snapshots(Q(has_undeclared_pep_owner=True))
+
+    def all_companies_with_pep_owner_in_declaration_but_not_registry(self):
+        return self._filter_snapshots(
+            Q(has_discrepancy_with_declarations=True, has_bo=True)
+        )
+
+    def all_companies_with_pep_owner_in_declaration_but_no_bo_in_registry(self):
+        return self._filter_snapshots(
+            Q(has_discrepancy_with_declarations=True, has_bo=False)
+        )
+
+    def all_companies_that_self_owned(self):
+        return self._filter_snapshots(Q(self_owned=True))
+
+    def all_companies_that_indirectly_self_owned(self):
+        return self._filter_snapshots(Q(indirectly_self_owned=True))
+
+    def all_companies_with_high_risk(self):
+        return self._filter_snapshots(
+            Q(
+                has_same_person_as_head_and_founder=True,
+                has_mass_registration_address=True,
+                charter_capital__lte=1000,
+            )
+        )
+
+    def all_companies_with_high_risk_and_bo(self):
+        return self._filter_snapshots(
+            Q(
+                has_same_person_as_head_and_founder=True,
+                has_mass_registration_address=True,
+                charter_capital__lte=1000,
+                has_bo=True
+            )
+        )
 
     def number_of_companies(self):
         """
@@ -581,3 +633,43 @@ class GlobalStats:
             res.append((key, sub_res))
 
         return total_cnt, OrderedDict(res)
+
+    def number_of_companies_with_pep_owner(self):
+        """Кількість компаній, де бенефіціарними власниками є ПЕПи (інформація з декларації за 2018)"""
+        return self.count_and_sample(self.all_companies_with_pep_owner())
+
+    def number_of_companies_with_pep_owner_in_the_past(self):
+        """Кількість компаній, де бенефіціарними власниками є ПЕПи (інформація з декларацій за 2015-2017)"""
+        return self.count_and_sample(self.all_companies_with_pep_owner_in_the_past())
+
+    def number_of_companies_with_undeclared_pep_owner(self):
+        """Кількість компаній, де бенефіціарними власниками є ПЕПи (за результатами журналістських рослідувань)"""
+        return self.count_and_sample(self.all_companies_with_undeclared_pep_owner())
+
+    def number_of_companies_with_pep_owner_in_declaration_but_not_registry(self):
+        """Кількість компаній, де бенефіціарними власниками є ПЕПи (інформація з декларації за 2018), але в реєстрі вказаний інший бенефіціар"""
+        return self.count_and_sample(
+            self.all_companies_with_pep_owner_in_declaration_but_not_registry()
+        )
+
+    def number_of_companies_with_pep_owner_in_declaration_but_no_bo_in_registry(self):
+        """Кількість компаній, де бенефіціарними власниками є ПЕПи (інформація з декларації за 2018), але в реєстрі не вказаний бенефіціар"""
+        return self.count_and_sample(
+            self.all_companies_with_pep_owner_in_declaration_but_no_bo_in_registry()
+        )
+
+    def number_of_companies_that_self_owned(self):
+        """Кількість компаній, де одним з власників є сама компанія"""
+        return self.count_and_sample(self.all_companies_that_self_owned())
+
+    def number_of_companies_that_indirectly_self_owned(self):
+        """Кількість компаній, де одним з власників є сама компанія через низку інших компаній (до 7)"""
+        return self.count_and_sample(self.all_companies_that_indirectly_self_owned())
+
+    def number_of_companies_with_high_risk(self):
+        """Кількість компаній з ознаками фіктивності: статутний фонд до 1000 грн, директор та власник одна і та ж фізична особа, адреса масової реєстрації."""
+        return self.count_and_sample(self.all_companies_with_high_risk())
+
+    def number_of_companies_with_high_risk_and_bo(self):
+        """Кількість компаній з ознаками фіктивності та які подали бенефіціара"""
+        return self.count_and_sample(self.all_companies_with_high_risk_and_bo())

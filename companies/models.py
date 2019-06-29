@@ -144,7 +144,8 @@ class Company(models.Model):
             jaro(name1, " ".join(opt)) for opt in islice(permutations(splits), limit)
         )
 
-    def compare_two_list_of_names(self, list_a, list_b, cutoff=0.93):
+    @staticmethod
+    def compare_two_list_of_names(list_a, list_b, cutoff=0.93):
         result = []
 
         if len(list_a) * len(list_b) > 1000:
@@ -154,7 +155,7 @@ class Company(models.Model):
             if side_a == side_b:
                 continue
 
-            score = self.compare_two_names(side_a, side_b)
+            score = Company.compare_two_names(side_a, side_b)
             if score > cutoff:
                 result.append({"side_a": side_a, "side_b": side_b, "score": score})
 
@@ -162,6 +163,10 @@ class Company(models.Model):
                 break
 
         return result
+
+    @staticmethod
+    def ugly_strip(s):
+        return s.strip(' -.’,0"139472856)/;№&`%+“‘”*¦:\'').strip().lower()
 
     def take_snapshot_of_flags(
         self, revision=None, force=False, mass_registration=None
@@ -247,7 +252,7 @@ class Company(models.Model):
 
                 if p.name:
                     snapshot.has_bo_persons = True
-                    all_owner_persons |= set(map(lambda s: s.strip().lower(), p.name))
+                    all_owner_persons |= set(map(self.ugly_strip, p.name))
                 else:
                     if p.was_dereferenced:
                         snapshot.has_dereferenced_bo = True
@@ -278,13 +283,13 @@ class Company(models.Model):
                 all_founder_countries |= set(p.country)
                 if p.name:
                     snapshot.has_founder_persons = True
-                    all_founder_persons |= set(map(lambda s: s.strip().lower(), p.name))
+                    all_founder_persons |= set(map(self.ugly_strip, p.name))
                 else:
                     snapshot.has_founder_companies = True
 
             if p.person_type == "head":
                 if p.name:
-                    all_head_persons |= set(map(lambda s: s.strip().lower(), p.name))
+                    all_head_persons |= set(map(self.ugly_strip, p.name))
 
         if snapshot.has_bo_persons:
             grouped_records = self.get_grouped_record(
@@ -305,7 +310,7 @@ class Company(models.Model):
                 names = {"founder": set(), "owner": set()}
 
                 for r in group["record"]:
-                    names[r.person_type] |= set(r.name)
+                    names[r.person_type] |= set(map(self.ugly_strip, r.name))
 
                 for k in flags_mapping:
                     if prev_names[k] is not None and names[k] != prev_names[k]:

@@ -31,6 +31,15 @@ class Command(BaseCommand):
         "breakdown_by_mass_bo_on_cyprus",
         "breakdown_by_number_of_bo",
         "breakdown_by_mass_registration_addresses",
+        "number_of_companies_with_pep_owner",
+        "number_of_companies_with_pep_owner_in_the_past",
+        "number_of_companies_with_undeclared_pep_owner",
+        "number_of_companies_with_pep_owner_in_declaration_but_not_registry",
+        "number_of_companies_with_pep_owner_in_declaration_but_no_bo_in_registry",
+        "number_of_companies_that_self_owned",
+        "number_of_companies_that_indirectly_self_owned",
+        "number_of_companies_with_high_risk",
+        "number_of_companies_with_high_risk_and_bo",
     ]
 
     def render_sample(self, sample):
