@@ -1,5 +1,5 @@
 from django.contrib.staticfiles.storage import staticfiles_storage
-from django.utils import formats
+from django.utils import formats, timezone
 from django.urls import reverse
 from django.utils.translation import gettext, ngettext
 
@@ -32,7 +32,12 @@ def environment(**options):
     )
 
     env.filters.update({
-        'datetime': lambda dt: formats.date_format(dt, "DATE_FORMAT"),
+        "datetime": lambda dt: formats.date_format(
+            timezone.localtime(
+                timezone.make_aware(parse_dt(dt)) if isinstance(dt, str) else dt
+            ),
+            "DATE_FORMAT",
+        ),
         'title': title,
         'uk_plural': ukr_plural,
         'curformat': curformat,
