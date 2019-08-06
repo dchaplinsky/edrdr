@@ -169,7 +169,7 @@ class EDR_Reader(object):
                     continue
 
                 for el in etree.getchildren():
-                    field = mapping[el.tag]
+                    field = mapping.get(el.tag)
                     if field == 'edrpou':
                         if el.text and el.text.lstrip('0'):
                             company[field] = int(el.text)
@@ -178,9 +178,8 @@ class EDR_Reader(object):
                     elif field == 'founders':
                         for founder in el.getchildren():
                             founders_list.append(founder.text)
-                    else:
-                        if field and field in mapping:
-                            company[field] = el.text
+                    elif field:
+                        company[field] = el.text
 
                 company["founders"] = founders_list
                 company["last_update"] = self.timestamp
