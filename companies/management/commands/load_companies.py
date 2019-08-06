@@ -179,7 +179,7 @@ class EDR_Reader(object):
                         for founder in el.getchildren():
                             founders_list.append(founder.text)
                     else:
-                        if field:
+                        if field and field in mapping:
                             company[field] = el.text
 
                 company["founders"] = founders_list

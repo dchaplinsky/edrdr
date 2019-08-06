@@ -21,6 +21,13 @@ def updated_querystring(request, params):
     return original_params.urlencode()
 
 
+def ensure_aware(dt):
+    if timezone.is_aware(dt):
+        return dt
+    else:
+        return timezone.make_aware(dt)
+
+
 def environment(**options):
     env = Environment(**options)
     env.globals.update({
@@ -34,7 +41,7 @@ def environment(**options):
     env.filters.update({
         "datetime": lambda dt: formats.date_format(
             timezone.localtime(
-                timezone.make_aware(parse_dt(dt)) if isinstance(dt, str) else dt
+               ensure_aware(timezone.make_aware(parse_dt(dt)) if isinstance(dt, str) else dt)
             ),
             "DATE_FORMAT",
         ),
