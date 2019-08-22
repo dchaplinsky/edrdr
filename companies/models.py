@@ -3,7 +3,6 @@ import logging
 from functools import reduce
 from itertools import permutations, product, islice
 from operator import mul
-from cacheops import cached
 
 from collections import OrderedDict, defaultdict
 from django.db import models
