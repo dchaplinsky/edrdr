@@ -18,6 +18,6 @@ django-cacheops==4.0.6
 django-qartez==0.7.1
 gunicorn==19.8.1
 PyYAML==4.2b4
-werkzeug==0.14.1
+Werkzeug==0.15.6
 raven==6.9.0
 fuzzywuzzy[speedup]==0.17.0

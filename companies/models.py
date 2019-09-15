@@ -122,6 +122,12 @@ class Company(models.Model):
         ]
     ]
 
+    COUNTRY_MARKERS = {
+        "британія": ["сполучене королівство", "британія", "англія"],
+        "кіпр": ["кіпр"],
+        "росія": ["росія", "російська", "россія"],
+    }
+
     @property
     def full_edrpou(self):
         return str(self.pk).rjust(8, "0")
@@ -165,7 +171,7 @@ class Company(models.Model):
 
     @staticmethod
     def ugly_strip(s):
-        return s.strip(' -.’,0"139472856)/;№&`%+“‘”*¦:\'').strip().lower()
+        return s.strip(" -.’,0\"139472856)/;№&`%+“‘”*¦:'").strip().lower()
 
     def take_snapshot_of_flags(
         self, revision=None, force=False, mass_registration=None
@@ -216,6 +222,15 @@ class Company(models.Model):
                 snapshot.indirectly_self_owned = False
                 snapshot.has_same_person_as_head_and_founder = False
                 snapshot.status = 0
+                snapshot.has_founders_on_occupied_soil = False
+                snapshot.has_founders_in_crimea = False
+                snapshot.has_high_risk = False
+                snapshot.has_foreign_bo = False
+                snapshot.has_foreign_founders = False
+                snapshot.has_russian_bo = False
+                snapshot.has_russian_founders = False
+                snapshot.has_pep_founder = False
+                snapshot.had_pep_founder_in_the_past = False
             else:
                 return
         else:
@@ -244,9 +259,45 @@ class Company(models.Model):
         all_founder_countries = set()
 
         for p in persons:
+            if p.person_type in ["owner", "founder"]:
+                for addr in p.address:
+                    for r in self.CRIMEA_MARKERS:
+                        if r.search(addr):
+                            if p.person_type == "owner":
+                                snapshot.has_bo_in_crimea = True
+                            else:
+                                snapshot.has_founders_in_crimea = True
+                            break
+
+                    for r1 in self.LUHANSK_MARKER_LEVEL1:
+                        if r1.search(addr):
+                            for r2 in self.LUHANSK_MARKER_LEVEL2:
+                                if r2.search(addr):
+                                    if p.person_type == "owner":
+                                        snapshot.has_bo_on_occupied_soil = True
+                                    else:
+                                        snapshot.has_founders_on_occupied_soil = True
+                                    break
+
+                    for r1 in self.DONETSK_MARKER_LEVEL1:
+                        if r1.search(addr):
+                            for r2 in self.DONETSK_MARKER_LEVEL2:
+                                if r2.search(addr):
+                                    if p.person_type == "owner":
+                                        snapshot.has_bo_on_occupied_soil = True
+                                    else:
+                                        snapshot.has_founders_on_occupied_soil = True
+                                    break
+            extra_countries = set()
+
+            for country, markers in self.COUNTRY_MARKERS.items():
+                for marker in markers:
+                    if re.search(marker, p.raw_record, flags=re.I):
+                        extra_countries.add(country)
+
             if p.person_type == "owner":
                 snapshot.has_bo = True
-                all_bo_countries |= set(p.country)
+                all_bo_countries |= set(p.country) | extra_countries
 
                 if p.bo_is_absent and company_is_acting:
                     snapshot.acting_and_explicitly_stated_that_has_no_bo = True
@@ -260,34 +311,13 @@ class Company(models.Model):
                     else:
                         snapshot.has_bo_companies = True
 
-                for addr in p.address:
-                    for r in self.CRIMEA_MARKERS:
-                        if r.search(addr):
-                            snapshot.has_bo_in_crimea = True
-                            break
-
-                    for r1 in self.LUHANSK_MARKER_LEVEL1:
-                        if r1.search(addr):
-                            for r2 in self.LUHANSK_MARKER_LEVEL2:
-                                if r2.search(addr):
-                                    snapshot.has_bo_on_occupied_soil = True
-                                    break
-
-                    for r1 in self.DONETSK_MARKER_LEVEL1:
-                        if r1.search(addr):
-                            for r2 in self.DONETSK_MARKER_LEVEL2:
-                                if r2.search(addr):
-                                    snapshot.has_bo_on_occupied_soil = True
-                                    break
-
             if p.person_type == "founder":
-                all_founder_countries |= set(p.country)
+                all_founder_countries |= set(p.country) | extra_countries
                 if p.name:
                     snapshot.has_founder_persons = True
                     all_founder_persons |= set(map(self.ugly_strip, p.name))
 
-            
-            if OwnedByCompany.objects.filter(company.self).count():
+            if OwnedByCompany.objects.filter(company=self).count():
                 snapshot.has_founder_companies = True
 
             if p.person_type == "head":
@@ -407,14 +437,13 @@ class Company(models.Model):
         except TooManyVariantsError:
             print("Too many persons to compare for company {}".format(self.pk))
 
-        snapshot.all_owner_persons = list(all_owner_persons)
-        snapshot.all_founder_persons = list(all_founder_persons)
-        snapshot.all_bo_countries = list(all_bo_countries)
-        snapshot.all_founder_countries = list(all_founder_countries)
-
-        if self.peps.filter(years__contains=[2018], from_declaration=True).exists():
+        if self.peps.filter(
+            years__contains=[2018], from_declaration=True, person_type="owner"
+        ).exists():
             snapshot.has_pep_owner = True
-            pep_bo = self.peps.filter(years__contains=[2018], from_declaration=True).first()
+            pep_bo = self.peps.filter(
+                years__contains=[2018], from_declaration=True
+            ).first()
 
             for person in all_owner_persons:
                 if self.compare_two_names(person, pep_bo.person) > 0.93:
@@ -422,10 +451,26 @@ class Company(models.Model):
             else:
                 snapshot.has_discrepancy_with_declarations = True
 
-        if self.peps.filter(from_declaration=True).exclude(years__contains=[2018]).exists():
+        if (
+            self.peps.filter(from_declaration=True, person_type="owner")
+            .exclude(years__contains=[2018])
+            .exists()
+        ):
             snapshot.had_pep_owner_in_the_past = True
 
-        if self.peps.filter(from_declaration=False).exists():
+        if self.peps.filter(
+            years__contains=[2018], from_declaration=True, person_type="founder"
+        ).exists():
+            snapshot.has_pep_founder = True
+
+        if (
+            self.peps.filter(from_declaration=True, person_type="founder")
+            .exclude(years__contains=[2018])
+            .exists()
+        ):
+            snapshot.had_pep_founder_in_the_past = True
+
+        if self.peps.filter(from_declaration=False, person_type="owner").exists():
             snapshot.has_undeclared_pep_owner = True
 
         if self.self_owned.filter(level=1).exists():
@@ -433,6 +478,36 @@ class Company(models.Model):
 
         if self.self_owned.filter(level__gt=1).exists():
             snapshot.indirectly_self_owned = True
+
+        if (
+            (
+                snapshot.has_same_person_as_head_and_founder
+                or snapshot.has_very_similar_person_as_head_and_founder
+            )
+            and len(snapshot.all_founder_persons) == 1
+            and not snapshot.has_founder_companies
+            and snapshot.has_mass_registration_address
+            and snapshot.charter_capital
+            and snapshot.charter_capital <= 1000
+        ):
+            snapshot.has_high_risk = True
+
+        if set(snapshot.all_bo_countries) - set(["україна"]):
+            snapshot.has_foreign_bo = True
+
+        if set(snapshot.all_founder_countries) - set(["україна"]):
+            snapshot.has_foreign_founders = True
+
+        if "росія" in snapshot.all_bo_countries:
+            snapshot.has_russian_bo = True
+
+        if "росія" in snapshot.all_founder_countries:
+            snapshot.has_russian_founders = True
+
+        snapshot.all_owner_persons = list(all_owner_persons)
+        snapshot.all_founder_persons = list(all_founder_persons)
+        snapshot.all_bo_countries = list(all_bo_countries)
+        snapshot.all_founder_countries = list(all_founder_countries)
 
         snapshot.save()
 
@@ -894,6 +969,15 @@ class CompanySnapshotFlags(models.Model):
     )
     has_bo_on_occupied_soil = models.BooleanField(default=False)
     has_bo_in_crimea = models.BooleanField(default=False)
+
+    has_founders_on_occupied_soil = models.BooleanField(default=False)
+    has_founders_in_crimea = models.BooleanField(default=False)
+    has_high_risk = models.BooleanField(default=False)
+    has_foreign_bo = models.BooleanField(default=False)
+    has_foreign_founders = models.BooleanField(default=False)
+    has_russian_bo = models.BooleanField(default=False)
+    has_russian_founders = models.BooleanField(default=False)
+
     acting_and_explicitly_stated_that_has_no_bo = models.BooleanField(default=False)
     not_present_in_revision = models.BooleanField(default=False)
     has_mass_registration_address = models.BooleanField(default=False)
@@ -905,13 +989,17 @@ class CompanySnapshotFlags(models.Model):
 
     has_pep_owner = models.BooleanField(default=False)
     had_pep_owner_in_the_past = models.BooleanField(default=False)
+    has_pep_founder = models.BooleanField(default=False)
+    had_pep_founder_in_the_past = models.BooleanField(default=False)
     has_undeclared_pep_owner = models.BooleanField(default=False)
     has_discrepancy_with_declarations = models.BooleanField(default=False)
     self_owned = models.BooleanField(default=False)
     indirectly_self_owned = models.BooleanField(default=False)
 
     status = models.IntegerField(
-        choices=CompanyRecord.COMPANY_STATUSES.items(), verbose_name="Останій статус компанії", default=0
+        choices=CompanyRecord.COMPANY_STATUSES.items(),
+        verbose_name="Останій статус компанії",
+        default=0,
     )
 
 
@@ -923,7 +1011,17 @@ class PEPOwner(models.Model):
     )
     person = models.CharField(max_length=100, verbose_name="Особа ПЕП")
     person_url = models.URLField(max_length=100, verbose_name="Посилання на pep.org.ua")
-    from_declaration = models.BooleanField(default=False, verbose_name="Зв'язок утворений з інформації з декларації")
+    from_declaration = models.BooleanField(
+        default=False, verbose_name="Зв'язок утворений з інформації з декларації"
+    )
+
+    person_type = models.CharField(
+        max_length=10,
+        choices=Person.PERSON_TYPES.items(),
+        db_index=True,
+        default="owner",
+    )
+
     company = models.ForeignKey(
         Company, on_delete=models.CASCADE, verbose_name="Компанія", related_name="peps"
     )
@@ -934,14 +1032,20 @@ class PEPOwner(models.Model):
 
 class SelfOwned(models.Model):
     company = models.ForeignKey(
-        Company, on_delete=models.CASCADE, verbose_name="Компанія", related_name="self_owned"
+        Company,
+        on_delete=models.CASCADE,
+        verbose_name="Компанія",
+        related_name="self_owned",
     )
     level = models.IntegerField(default=1)
 
 
 class OwnedByCompany(models.Model):
     company = models.ForeignKey(
-        Company, on_delete=models.CASCADE, verbose_name="Компанія", related_name="owned_by_company"
+        Company,
+        on_delete=models.CASCADE,
+        verbose_name="Компанія",
+        related_name="owned_by_company",
     )
 
     description = models.TextField("Опис власника", blank=True, default="")

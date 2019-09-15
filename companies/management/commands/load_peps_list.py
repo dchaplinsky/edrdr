@@ -23,6 +23,8 @@ class Command(BaseCommand):
         PEPOwner.objects.all().delete()
 
         for l in tqdm(reader):
+            if not l["edrpou"]:
+                continue
             edrpou = l["edrpou"].strip().lstrip("0")
             if not edrpou or not edrpou.isdigit():
                 print("Cannot identify company by edrpou {}, pep line was {}".format(edrpou, l))
@@ -42,6 +44,7 @@ class Command(BaseCommand):
                 person_url=l["url"],
                 from_declaration=l["from_declaration"] == "True",
                 company=company,
+                person_type=l.get("person_type", "owner")
             )
 
             pep.save()
