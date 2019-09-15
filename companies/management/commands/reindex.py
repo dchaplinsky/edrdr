@@ -18,6 +18,14 @@ class Command(BaseCommand):
             help='Delete indices before reindex',
         )
 
+        parser.add_argument(
+            '--force',
+            action='store_true',
+            dest='force',
+            default=False,
+            help='Forcely reindex everything',
+        )
+
     def bulk_write(self, conn, docs_to_index):
         for response in parallel_bulk(
                 conn, (d.to_dict(True) for d in docs_to_index)):
@@ -26,6 +34,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         conn = connections.get_connection('default')
 
+        qs = Company.objects.all()
         if options["drop_indices"]:
             companies_idx.delete(ignore=404)
             companies_idx.create()
@@ -37,9 +46,9 @@ class Command(BaseCommand):
                     'index.max_result_window': 20000000
                 }
             )
-            qs = Company.objects.all()
         else:
-            qs = Company.objects.filter(is_dirty=True)
+            if not options["force"]:
+                qs = Company.objects.filter(is_dirty=True)
 
         docs_to_index = []
         with tqdm(total=qs.count()) as pbar:

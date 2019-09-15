@@ -567,6 +567,11 @@ class Company(models.Model):
 
             raw_records.add(person.raw_record)
 
+        snapshot = self.snapshot_stats.order_by("-revision_id").first()
+        flags = None
+        if snapshot:
+            flags = snapshot.to_dict()
+
         for name, position in persons:
             all_persons |= parse_and_generate(name, position)
             names_autocomplete |= autocomplete_suggestions(name)
@@ -580,6 +585,7 @@ class Company(models.Model):
             "latest_record": latest_record.to_dict(),
             "raw_records": list(filter(None, raw_records)),
             "names_autocomplete": list(filter(None, names_autocomplete)),
+            "internals": {"flags": flags},
         }
 
     def group_revisions(self, revisions, records, hash_field_getter):
@@ -1001,6 +1007,57 @@ class CompanySnapshotFlags(models.Model):
         verbose_name="Останій статус компанії",
         default=0,
     )
+
+    def to_dict(self):
+        dct = model_to_dict(
+            self,
+            fields=[
+                "has_bo",
+                "has_bo_persons",
+                "has_bo_companies",
+                "has_dereferenced_bo",
+                "has_only_persons_bo",
+                "has_only_companies_bo",
+                "has_founder_persons",
+                "has_founder_companies",
+                "has_only_persons_founder",
+                "has_only_companies_founder",
+                "has_same_person_as_bo_and_founder",
+                "has_same_person_as_bo_and_head",
+                "has_same_person_as_head_and_founder",
+                "has_very_similar_person_as_bo_and_founder",
+                "has_very_similar_person_as_bo_and_head",
+                "has_very_similar_person_as_head_and_founder",
+                "has_bo_on_occupied_soil",
+                "has_bo_in_crimea",
+                "has_founders_on_occupied_soil",
+                "has_founders_in_crimea",
+                "has_high_risk",
+                "has_foreign_bo",
+                "has_foreign_founders",
+                "has_russian_bo",
+                "has_russian_founders",
+                "acting_and_explicitly_stated_that_has_no_bo",
+                "not_present_in_revision",
+                "has_mass_registration_address",
+                "has_changes_in_bo",
+                "has_changes_in_ownership",
+                "has_pep_owner",
+                "had_pep_owner_in_the_past",
+                "has_pep_founder",
+                "had_pep_founder_in_the_past",
+                "has_undeclared_pep_owner",
+                "has_discrepancy_with_declarations",
+                "self_owned",
+                "indirectly_self_owned",
+                "charter_capital",
+                "reg_date",
+                "all_bo_countries",
+                "all_founder_countries",
+            ],
+        )
+
+        return dct
 
 
 class PEPOwner(models.Model):
