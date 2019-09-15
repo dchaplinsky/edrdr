@@ -215,6 +215,7 @@ class Company(models.Model):
                 snapshot.self_owned = False
                 snapshot.indirectly_self_owned = False
                 snapshot.has_same_person_as_head_and_founder = False
+                snapshot.status = 0
             else:
                 return
         else:
@@ -228,6 +229,7 @@ class Company(models.Model):
         if not latest_record:
             snapshot.not_present_in_revision = True
         else:
+            snapshot.status = latest_record.status
             company_is_acting = latest_record.status == 1
             snapshot.has_mass_registration_address = (
                 latest_record.shortened_validated_location in mass_registration
@@ -283,8 +285,10 @@ class Company(models.Model):
                 if p.name:
                     snapshot.has_founder_persons = True
                     all_founder_persons |= set(map(self.ugly_strip, p.name))
-                else:
-                    snapshot.has_founder_companies = True
+
+            
+            if OwnedByCompany.objects.filter(company.self).count():
+                snapshot.has_founder_companies = True
 
             if p.person_type == "head":
                 if p.name:
@@ -841,6 +845,7 @@ class CompanySnapshotFlags(models.Model):
     )
 
     charter_capital = models.FloatField(null=True, default=None)
+    reg_date = models.DateField(null=True)
     has_bo = models.BooleanField(default=False)
     has_bo_persons = models.BooleanField(default=False)
     has_bo_companies = models.BooleanField(default=False)
@@ -905,6 +910,10 @@ class CompanySnapshotFlags(models.Model):
     self_owned = models.BooleanField(default=False)
     indirectly_self_owned = models.BooleanField(default=False)
 
+    status = models.IntegerField(
+        choices=CompanyRecord.COMPANY_STATUSES.items(), verbose_name="Останій статус компанії", default=0
+    )
+
 
 class PEPOwner(models.Model):
     years = ArrayField(
@@ -928,3 +937,12 @@ class SelfOwned(models.Model):
         Company, on_delete=models.CASCADE, verbose_name="Компанія", related_name="self_owned"
     )
     level = models.IntegerField(default=1)
+
+
+class OwnedByCompany(models.Model):
+    company = models.ForeignKey(
+        Company, on_delete=models.CASCADE, verbose_name="Компанія", related_name="owned_by_company"
+    )
+
+    description = models.TextField("Опис власника", blank=True, default="")
+    owner = models.CharField("Власник (код)", max_length=200, blank=True, default="")

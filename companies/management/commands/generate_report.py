@@ -11,6 +11,7 @@ class Command(BaseCommand):
         "number_of_companies_with_bo_person",
         "number_of_companies_with_bo_company",
         "number_of_companies_with_only_persons_founder_and_no_bo",
+        "number_of_companies_with_only_company_founder_and_no_bo_after_dday",
         "number_of_companies_with_only_company_founder_and_no_bo",
         "number_of_companies_with_company_founder_and_no_bo",
         "number_of_companies_with_only_persons_founder_and_different_bo",

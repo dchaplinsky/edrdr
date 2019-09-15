@@ -4,6 +4,7 @@ from django.core.management.base import BaseCommand
 from django.conf import settings
 from csv import DictReader
 from tqdm import tqdm
+from dateutil.parser import parse as dt_parse
 
 from companies.models import CompanySnapshotFlags
 
@@ -28,7 +29,17 @@ class Command(BaseCommand):
                 continue
             
             edrpou = int(edrpou)
-            capital = float(l["capital"])
+            if l["capital"]:
+                capital = float(l["capital"])
+            else:
+                capital = None
 
-            if capital > 0:
-                CompanySnapshotFlags.objects.filter(company_id=edrpou).update(charter_capital=capital)
+            if l["reg_date"]:
+                reg_date = dt_parse(l["reg_date"], yearfirst=True)
+            else:
+                reg_date = None
+
+            CompanySnapshotFlags.objects.filter(company_id=edrpou).nocache().update(
+                charter_capital=capital,
+                reg_date=reg_date
+            )

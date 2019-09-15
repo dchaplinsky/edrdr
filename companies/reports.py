@@ -6,6 +6,7 @@ from tqdm import tqdm
 from .models import *
 from xlsxwriter import Workbook
 from collections import OrderedDict
+from datetime import date
 
 random.seed(1337)
 
@@ -24,8 +25,12 @@ class GlobalStats:
         worksheet.write(curr_line, 4, "По")
         worksheet.write(curr_line, 5, "Власник (ПІБ)")
         worksheet.write(curr_line, 6, "Власник (Повний запис)")
+        worksheet.write(curr_line, 7, "Статутний капітал")
+        worksheet.write(curr_line, 8, "Поточний статус")
         dt_format = outfile.add_format({"num_format": "dd/mm/yy"})
         header_format = outfile.add_format({"bold": True, "align": "center_across"})
+        owner_format = outfile.add_format({"color": "green"})
+        founder_format = outfile.add_format({"color": "blue"})
         rev = GlobalStats.latest_revision()
         curr_line += 1
 
@@ -36,7 +41,7 @@ class GlobalStats:
             for section, values in ids.items():
                 if section:
                     worksheet.merge_range(
-                        curr_line, 0, curr_line, 6, section, header_format
+                        curr_line, 0, curr_line, 8, section, header_format
                     )
                     curr_line += 1
 
@@ -61,6 +66,10 @@ class GlobalStats:
                             person_type="founder",
                         ).values_list("name", flat=True)
 
+                        latest_flags_rec = CompanySnapshotFlags.objects.filter(
+                            company_id=int(company_edrpou), revision_id=rev.pk
+                        ).first()
+
                         worksheet.write_url(
                             curr_line,
                             0,
@@ -71,7 +80,9 @@ class GlobalStats:
                         )
 
                         grouped_records = company.get_grouped_record(
-                            persons_filter_clause=models.Q(person_type="owner")
+                            persons_filter_clause=models.Q(
+                                person_type__in=["owner", "founder"]
+                            )
                         )["grouped_persons_records"]
 
                         if latest_company_rec is not None:
@@ -80,6 +91,15 @@ class GlobalStats:
                                 1,
                                 latest_company_rec.short_name
                                 or latest_company_rec.name,
+                            )
+
+                            worksheet.write(
+                                curr_line, 8, latest_company_rec.get_status_display()
+                            )
+
+                        if latest_flags_rec is not None:
+                            worksheet.write(
+                                curr_line, 7, latest_flags_rec.charter_capital
                             )
 
                         if latest_founder_recs:
@@ -96,7 +116,9 @@ class GlobalStats:
                             )
 
                         if not grouped_records:
-                            worksheet.write(curr_line, 3, "Бенефіціарів не вказано")
+                            worksheet.write(
+                                curr_line, 3, "Бенефіціарів/власників не вказано"
+                            )
                         else:
                             for group in grouped_records:
                                 worksheet.write(
@@ -114,7 +136,14 @@ class GlobalStats:
 
                                 for r in group["record"]:
                                     worksheet.write(curr_line, 5, ", ".join(r.name))
-                                    worksheet.write(curr_line, 6, r.raw_record)
+                                    worksheet.write(
+                                        curr_line,
+                                        6,
+                                        r.raw_record,
+                                        owner_format
+                                        if r.person_type == "owner"
+                                        else founder_format,
+                                    )
                                     curr_line += 1
 
                             curr_line -= 1
@@ -200,6 +229,13 @@ class GlobalStats:
             Q(has_only_companies_founder=True) & Q(has_bo=False)
         )
 
+    def all_companies_with_only_company_founder_and_no_bo_after_dday(self):
+        return self._filter_snapshots(
+            Q(has_only_companies_founder=True)
+            & Q(has_bo=False)
+            & Q(reg_date__gte=date(2015, 9, 25))
+        )
+
     def all_companies_with_company_founder_and_no_bo(self):
         return self._filter_snapshots(Q(has_founder_companies=True) & Q(has_bo=False))
 
@@ -279,14 +315,34 @@ class GlobalStats:
         )
 
     def all_companies_with_british_founders(self):
-        return self._filter_snapshots(
+        return set(
+            Person.objects.filter(
+                person_type="founder", revisions__contains=[self.latest_revision().pk]
+            )
+            .filter(
+                Q(raw_record__icontains="СПОЛУЧЕНЕ КОРОЛІВСТВО")
+                | Q(raw_record__icontains="британія")
+                | Q(raw_record__icontains="англія")
+            )
+            .values_list("company_id", flat=True)
+        ) | self._filter_snapshots(
             Q(all_founder_countries__contains=["британія"])
             | Q(all_founder_countries__contains=["велика британія"])
             | Q(all_founder_countries__contains=["англія"])
         )
 
     def all_companies_with_british_bo(self):
-        return self._filter_snapshots(
+        return set(
+            Person.objects.filter(
+                person_type="owner", revisions__contains=[self.latest_revision().pk]
+            )
+            .filter(
+                Q(raw_record__icontains="СПОЛУЧЕНЕ КОРОЛІВСТВО")
+                | Q(raw_record__icontains="британія")
+                | Q(raw_record__icontains="англія")
+            )
+            .values_list("company_id", flat=True)
+        ) | self._filter_snapshots(
             Q(all_bo_countries__contains=["британія"])
             | Q(all_bo_countries__contains=["велика британія"])
             | Q(all_bo_countries__contains=["англія"])
@@ -326,19 +382,29 @@ class GlobalStats:
     def all_companies_with_high_risk(self):
         return self._filter_snapshots(
             Q(
-                has_same_person_as_head_and_founder=True,
+                Q(has_same_person_as_head_and_founder=True)
+                | Q(has_very_similar_person_as_head_and_founder=True),
+                all_founder_persons__len=1,
+                has_founder_companies=False,
                 has_mass_registration_address=True,
                 charter_capital__lte=1000,
+                charter_capital__gt=0,
+                charter_capital__isnull=False,
             )
         )
 
     def all_companies_with_high_risk_and_bo(self):
         return self._filter_snapshots(
             Q(
-                has_same_person_as_head_and_founder=True,
+                Q(has_same_person_as_head_and_founder=True)
+                | Q(has_very_similar_person_as_head_and_founder=True),
                 has_mass_registration_address=True,
+                all_founder_persons__len=1,
+                has_founder_companies=False,
                 charter_capital__lte=1000,
-                has_bo=True
+                has_bo=True,
+                charter_capital__gt=0,
+                charter_capital__isnull=False,
             )
         )
 
@@ -386,7 +452,18 @@ class GlobalStats:
         """
 
         return self.count_and_sample(
-            self.all_companies_with_only_company_founder_and_no_bo()
+            self.all_companies_with_only_company_founder_and_no_bo(),
+            number_of_samples=30000,
+        )
+
+    def number_of_companies_with_only_company_founder_and_no_bo_after_dday(self):
+        """
+        Скільки компаній, де власником є тільки юридичні особи, не вказано кінцевого вигоодержувача, що зареєстровані після 25 вересня 2015
+        """
+
+        return self.count_and_sample(
+            self.all_companies_with_only_company_founder_and_no_bo_after_dday(),
+            number_of_samples=30000,
         )
 
     def number_of_companies_with_company_founder_and_no_bo(self):
@@ -515,11 +592,11 @@ class GlobalStats:
 
     def number_of_companies_with_british_founders(self):
         """Кількість компаній, де власниками є британські компанії"""
-        return self.count_and_sample(self.all_companies_with_british_founders())
+        return self.count_and_sample(self.all_companies_with_british_founders(), number_of_samples=5000)
 
     def number_of_companies_with_british_bo(self):
         """Кількість компаній, де бенефіціарами є британські компанії"""
-        return self.count_and_sample(self.all_companies_with_british_bo())
+        return self.count_and_sample(self.all_companies_with_british_bo(), number_of_samples=5000)
 
     def breakdown_by_mass_bo(self):
         """
@@ -563,7 +640,7 @@ class GlobalStats:
                 person_type="owner", revisions__contains=[rev.pk], name__len__gt=0
             )
             .filter(
-                Q(country__contains=["кіпр"]) | Q(country__contains=["республіка кіпр"])
+                Q(country__contains=["кіпр"]) | Q(country__contains=["республіка кіпр"]) | Q(raw_record__icontains="кіпр")
             )
             .values("name")
             .annotate(cnt=Count("name"))
@@ -615,7 +692,7 @@ class GlobalStats:
         total_cnt = 0
         rev = self.latest_revision()
         mra = list(CompanyRecord.objects.mass_registration_addresses(rev.pk).keys())[
-            :20
+            :800
         ]
 
         for addr in mra:
@@ -636,11 +713,15 @@ class GlobalStats:
 
     def number_of_companies_with_pep_owner(self):
         """Кількість компаній, де бенефіціарними власниками є ПЕПи (інформація з декларації за 2018)"""
-        return self.count_and_sample(self.all_companies_with_pep_owner())
+        return self.count_and_sample(
+            self.all_companies_with_pep_owner(), number_of_samples=5000
+        )
 
     def number_of_companies_with_pep_owner_in_the_past(self):
         """Кількість компаній, де бенефіціарними власниками є ПЕПи (інформація з декларацій за 2015-2017)"""
-        return self.count_and_sample(self.all_companies_with_pep_owner_in_the_past())
+        return self.count_and_sample(
+            self.all_companies_with_pep_owner_in_the_past(), number_of_samples=5000
+        )
 
     def number_of_companies_with_undeclared_pep_owner(self):
         """Кількість компаній, де бенефіціарними власниками є ПЕПи (за результатами журналістських рослідувань)"""
@@ -668,8 +749,12 @@ class GlobalStats:
 
     def number_of_companies_with_high_risk(self):
         """Кількість компаній з ознаками фіктивності: статутний фонд до 1000 грн, директор та власник одна і та ж фізична особа, адреса масової реєстрації."""
-        return self.count_and_sample(self.all_companies_with_high_risk())
+        return self.count_and_sample(
+            self.all_companies_with_high_risk(), number_of_samples=7000
+        )
 
     def number_of_companies_with_high_risk_and_bo(self):
         """Кількість компаній з ознаками фіктивності та які подали бенефіціара"""
-        return self.count_and_sample(self.all_companies_with_high_risk_and_bo())
+        return self.count_and_sample(
+            self.all_companies_with_high_risk_and_bo(), number_of_samples=7000
+        )

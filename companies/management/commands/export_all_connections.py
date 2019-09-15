@@ -2,10 +2,8 @@ import re
 import sys
 import json
 import argparse
-from functools import reduce
-from itertools import permutations, product, islice, zip_longest
-from operator import mul
-from Levenshtein import jaro
+
+from tools.names import compare_two_names, full_compare
 
 from django.core.management.base import BaseCommand
 from tqdm import tqdm
@@ -24,56 +22,6 @@ class Command(BaseCommand):
         return json.dumps(rec, ensure_ascii=False, sort_keys=True, cls=SetEncoder, indent=4)
 
     @staticmethod
-    def compare_two_names(
-        name1, name2, max_splits=7, straight_limit=0.93, smart_limit=0.95
-    ):
-        def normalize_name(s):
-            return re.sub(r"\s+", " ", s.strip().replace("-", " "))
-
-        def slugify_name(s):
-            return (
-                s.replace(" ", "")
-                .replace(".", "")
-                .replace('"', "")
-                .replace("'", "")
-                .replace("’", "")
-            )
-
-        name1 = normalize_name(name1)
-        name2 = normalize_name(name2)
-
-        if slugify_name(name1) == slugify_name(name2):
-            return True
-
-        splits = name2.split(" ")
-
-        straight_similarity = jaro(name1, name2)
-        if straight_similarity > smart_limit:
-            return True
-
-        if straight_similarity > 0.8:
-            min_pair_distance = 1
-            for a, b in zip_longest(name1.split(" "), splits):
-                if a is not None and b is not None:
-                    min_pair_distance = min(jaro(a, b), min_pair_distance)
-
-            if min_pair_distance > 0.9:
-                if len(splits) > 1:
-                    tqdm.write("Hmmm, looks like a match {} {}".format(name1, name2))
-                return True
-            else:
-                tqdm.write("Check if it's match: {} {}".format(name1, name2))
-
-        limit = reduce(mul, range(1, max_splits + 1))
-
-        if len(splits) > max_splits:
-            tqdm.write("Too much permutations for {}".format(name2))
-
-        max_similarity = max(
-            jaro(name1, " ".join(opt)) for opt in islice(permutations(splits), limit)
-        )
-
-        return max_similarity > smart_limit
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -106,13 +54,7 @@ class Command(BaseCommand):
 
                     for c in company_rec["connections"]:
                         for name in c["names"]:
-                            comparison_result = self.compare_two_names(p["name"], name)
-                            if not comparison_result:
-                                comparison_result = self.compare_two_names(
-                                    name, p["name"]
-                                )
-
-                            if comparison_result:
+                            if full_compare(p["name"], name):
                                 c["names"] |= set([p["name"].lower()])
                                 # if len(c["names"]) > 1:
                                 #     print(c["names"])
@@ -132,7 +74,7 @@ class Command(BaseCommand):
                                 merged = True
                                 break
                             else:
-                                if self.compare_two_names(
+                                if compare_two_names(
                                     p["name"].replace(" ", ""), name.replace(" ", "")
                                 ):
                                     tqdm.write(
