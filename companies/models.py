@@ -479,19 +479,6 @@ class Company(models.Model):
         if self.self_owned.filter(level__gt=1).exists():
             snapshot.indirectly_self_owned = True
 
-        if (
-            (
-                snapshot.has_same_person_as_head_and_founder
-                or snapshot.has_very_similar_person_as_head_and_founder
-            )
-            and len(snapshot.all_founder_persons) == 1
-            and not snapshot.has_founder_companies
-            and snapshot.has_mass_registration_address
-            and snapshot.charter_capital
-            and snapshot.charter_capital <= 1000
-        ):
-            snapshot.has_high_risk = True
-
         if set(snapshot.all_bo_countries) - set(["україна"]):
             snapshot.has_foreign_bo = True
 
@@ -508,6 +495,19 @@ class Company(models.Model):
         snapshot.all_founder_persons = list(all_founder_persons)
         snapshot.all_bo_countries = list(all_bo_countries)
         snapshot.all_founder_countries = list(all_founder_countries)
+
+        if (
+            (
+                snapshot.has_same_person_as_head_and_founder
+                or snapshot.has_very_similar_person_as_head_and_founder
+            )
+            and len(snapshot.all_founder_persons) == 1
+            and not snapshot.has_founder_companies
+            and snapshot.has_mass_registration_address
+            and snapshot.charter_capital
+            and snapshot.charter_capital <= 1000
+        ):
+            snapshot.has_high_risk = True
 
         snapshot.save()
 
