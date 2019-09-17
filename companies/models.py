@@ -137,8 +137,27 @@ class Company(models.Model):
 
     @staticmethod
     def compare_two_names(name1, name2, max_splits=7):
-        name1 = re.sub(r"\s+", " ", name1.lower().strip())
-        name2 = re.sub(r"\s+", " ", name2.lower().strip())
+        def normalize_name(s):
+            return re.sub(r"\s+", " ", s.lower().strip().replace("-", " "))
+
+        def slugify_name(s):
+            return (
+                s.replace(" ", "")
+                .replace(".", "")
+                .replace('"', "")
+                .replace("'", "")
+                .replace("’", "")
+            )
+
+        name1 = normalize_name(name1)
+        name2 = normalize_name(name2)
+
+        if slugify_name(name1) == slugify_name(name2):
+            return 1
+
+        if jaro(name1, name2) > 0.95:
+            return 1
+
         splits = name2.split(" ")
         limit = reduce(mul, range(1, max_splits + 1))
 
@@ -195,6 +214,8 @@ class Company(models.Model):
                 snapshot = existing_snapshot.first()
 
                 # Resetting existing values
+                snapshot.charter_capital = None
+                snapshot.reg_date = None
                 snapshot.has_bo = False
                 snapshot.has_bo_companies = False
                 snapshot.has_bo_persons = False
@@ -249,6 +270,8 @@ class Company(models.Model):
             snapshot.has_mass_registration_address = (
                 latest_record.shortened_validated_location in mass_registration
             )
+            snapshot.charter_capital = latest_record.charter_capital
+            snapshot.reg_date = latest_record.reg_date
 
         persons = Person.objects.filter(company=self, revisions__contains=[revision.pk])
 
@@ -479,18 +502,6 @@ class Company(models.Model):
         if self.self_owned.filter(level__gt=1).exists():
             snapshot.indirectly_self_owned = True
 
-        if set(snapshot.all_bo_countries) - set(["україна"]):
-            snapshot.has_foreign_bo = True
-
-        if set(snapshot.all_founder_countries) - set(["україна"]):
-            snapshot.has_foreign_founders = True
-
-        if "росія" in snapshot.all_bo_countries:
-            snapshot.has_russian_bo = True
-
-        if "росія" in snapshot.all_founder_countries:
-            snapshot.has_russian_founders = True
-
         snapshot.all_owner_persons = list(all_owner_persons)
         snapshot.all_founder_persons = list(all_founder_persons)
         snapshot.all_bo_countries = list(all_bo_countries)
@@ -508,6 +519,18 @@ class Company(models.Model):
             and snapshot.charter_capital <= 1000
         ):
             snapshot.has_high_risk = True
+
+        if set(snapshot.all_bo_countries) - set(["україна"]):
+            snapshot.has_foreign_bo = True
+
+        if set(snapshot.all_founder_countries) - set(["україна"]):
+            snapshot.has_foreign_founders = True
+
+        if "росія" in snapshot.all_bo_countries:
+            snapshot.has_russian_bo = True
+
+        if "росія" in snapshot.all_founder_countries:
+            snapshot.has_russian_founders = True
 
         snapshot.save()
 
@@ -804,6 +827,8 @@ class CompanyRecord(models.Model):
     validated_location_apartment = models.CharField(
         "Валідована Квартира/офіс/кімната", max_length=100, default=""
     )
+    charter_capital = models.FloatField(null=True, default=None)
+    reg_date = models.DateField(null=True)
 
     objects = CompanyRecordManager()
 

@@ -6,7 +6,7 @@ from csv import DictReader
 from tqdm import tqdm
 from dateutil.parser import parse as dt_parse
 
-from companies.models import CompanySnapshotFlags
+from companies.models import CompanySnapshotFlags, CompanyRecord
 
 
 class Command(BaseCommand):
@@ -39,7 +39,7 @@ class Command(BaseCommand):
             else:
                 reg_date = None
 
-            CompanySnapshotFlags.objects.filter(company_id=edrpou).nocache().update(
+            CompanyRecord.objects.filter(company_id=edrpou).nocache().update(
                 charter_capital=capital,
                 reg_date=reg_date
             )
