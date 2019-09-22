@@ -252,6 +252,7 @@ class Company(models.Model):
                 snapshot.has_russian_founders = False
                 snapshot.has_pep_founder = False
                 snapshot.had_pep_founder_in_the_past = False
+                snapshot.bo_changes_dates = []
             else:
                 return
         else:
@@ -347,6 +348,7 @@ class Company(models.Model):
                 if p.name:
                     all_head_persons |= set(map(self.ugly_strip, p.name))
 
+        # TODO validate if we need to calculate ownership changes
         if snapshot.has_bo_persons:
             grouped_records = self.get_grouped_record(
                 persons_filter_clause=models.Q(person_type__in=["owner", "founder"])
@@ -355,13 +357,14 @@ class Company(models.Model):
             prev_names = {"founder": None, "owner": None}
 
             flags_mapping = {
-                "owner": {
+                "owner": {"flag_field": "has_changes_in_bo", "diff_field": "bo_diff"},
+                "founder": {
                     "flag_field": "has_changes_in_ownership",
                     "diff_field": "ownership_diff",
                 },
-                "founder": {"flag_field": "has_changes_in_bo", "diff_field": "bo_diff"},
             }
 
+            bo_changes_dates = []
             for group in grouped_records:
                 names = {"founder": set(), "owner": set()}
 
@@ -380,6 +383,10 @@ class Company(models.Model):
                             if ratio >= 90:
                                 pass
                             else:
+                                bo_changes_dates.append(
+                                    group["start_revision"].created
+                                )
+
                                 setattr(snapshot, flags_mapping[k]["flag_field"], True)
                                 setattr(
                                     snapshot,
@@ -391,6 +398,8 @@ class Company(models.Model):
                                     },
                                 )
                         else:
+                            bo_changes_dates.append(group["start_revision"].created)
+
                             setattr(snapshot, flags_mapping[k]["flag_field"], True)
                             setattr(
                                 snapshot,
@@ -405,6 +414,8 @@ class Company(models.Model):
                 prev_names = names
                 if snapshot.has_changes_in_bo and snapshot.has_changes_in_ownership:
                     break
+
+            snapshot.bo_changes_dates = bo_changes_dates
 
         if snapshot.has_bo_persons and not snapshot.has_bo_companies:
             snapshot.has_only_persons_bo = True
@@ -1026,6 +1037,9 @@ class CompanySnapshotFlags(models.Model):
     has_discrepancy_with_declarations = models.BooleanField(default=False)
     self_owned = models.BooleanField(default=False)
     indirectly_self_owned = models.BooleanField(default=False)
+    bo_changes_dates = ArrayField(
+        models.DateTimeField(), default=list, verbose_name="Дати зміни БО"
+    )
 
     status = models.IntegerField(
         choices=CompanyRecord.COMPANY_STATUSES.items(),
@@ -1079,6 +1093,7 @@ class CompanySnapshotFlags(models.Model):
                 "reg_date",
                 "all_bo_countries",
                 "all_founder_countries",
+                "bo_changes_dates",
             ],
         )
 

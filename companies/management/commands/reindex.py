@@ -4,35 +4,34 @@ from elasticsearch.helpers import parallel_bulk
 from elasticsearch_dsl.connections import connections
 from tqdm import tqdm
 
-from companies.models import Company
+from companies.models import Company, CompanySnapshotFlags
 from companies.elastic_models import Company as ElasticCompany, companies_idx
 
 
 class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
-            '--drop_indices',
-            action='store_true',
-            dest='drop_indices',
+            "--drop_indices",
+            action="store_true",
+            dest="drop_indices",
             default=False,
-            help='Delete indices before reindex',
+            help="Delete indices before reindex",
         )
 
         parser.add_argument(
-            '--force',
-            action='store_true',
-            dest='force',
+            "--force",
+            action="store_true",
+            dest="force",
             default=False,
-            help='Forcely reindex everything',
+            help="Forcely reindex everything",
         )
 
     def bulk_write(self, conn, docs_to_index):
-        for response in parallel_bulk(
-                conn, (d.to_dict(True) for d in docs_to_index)):
+        for response in parallel_bulk(conn, (d.to_dict(True) for d in docs_to_index)):
             pass
 
     def handle(self, *args, **options):
-        conn = connections.get_connection('default')
+        conn = connections.get_connection("default")
 
         qs = Company.objects.all()
         if options["drop_indices"]:
@@ -42,22 +41,24 @@ class Command(BaseCommand):
 
             conn.indices.put_settings(
                 index=ElasticCompany._doc_type.index,
-                body={
-                    'index.max_result_window': 20000000
-                }
+                body={"index.max_result_window": 20000000},
             )
         else:
             if not options["force"]:
                 qs = Company.objects.filter(is_dirty=True)
 
+        # qs = Company.objects.filter(
+        #     pk__in=CompanySnapshotFlags.objects.filter(
+        #         bo_changes_dates__len__gte=1
+        #     ).values_list("company_id", flat=True)
+        # )
         docs_to_index = []
-        with tqdm(total=qs.count()) as pbar:
-            for p in qs.nocache().iterator():
-                pbar.update(1)
-                docs_to_index.append(ElasticCompany(**p.to_dict()))
-                if len(docs_to_index) > 2000:
-                    self.bulk_write(conn, docs_to_index)
-                    docs_to_index = []
+
+        for p in tqdm(qs.nocache().iterator()):
+            docs_to_index.append(ElasticCompany(**p.to_dict()))
+            if len(docs_to_index) > 2000:
+                self.bulk_write(conn, docs_to_index)
+                docs_to_index = []
 
         self.bulk_write(conn, docs_to_index)
         qs.update(is_dirty=False)
