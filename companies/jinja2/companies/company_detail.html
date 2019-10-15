@@ -108,7 +108,9 @@
                             <p><a href="{{ url('search>results') }}?q={{ latest_record.location|urlencode }}&is_addr=true" target="_blank" class="search-for"><span itemprop="address">{{ latest_record.location }}</span></a></p>
                             <p>{{ latest_record.company_profile }}</p>
                             <hr>
+                            {% if latest_record_revision in global_revisions %}
                             <div>{{ _("Оновлено від") }} <a href="{{ global_revisions[latest_record_revision].get_absolute_url() }}">{{ global_revisions[latest_record_revision].created|datetime }}</a></div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -135,7 +137,9 @@
                                 {% endfor %}
                             </ul>
                             <hr>
+                            {% if latest_persons_revision in global_revisions %}
                             {{ _("Оновлено від") }} <a href="{{ global_revisions[latest_persons_revision].get_absolute_url() }}">{{ global_revisions[latest_persons_revision].created|datetime }}</a>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
