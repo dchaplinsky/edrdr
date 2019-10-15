@@ -12,7 +12,7 @@ from itertools import islice
 from time import sleep
 from hashlib import sha1
 from csv import DictReader
-from zipfile import ZipFile
+from zipfile import ZipFile, BadZipFile
 from io import TextIOWrapper
 from random import randrange
 
@@ -99,20 +99,24 @@ class EDR_Reader(object):
         """
 
         if self.file_type == "zip":
-            with ZipFile(self.file) as zip_arch:
-                for fname in zip_arch.namelist():
-                    if "uo" in fname.lower():
-                        logger.info("Reading {} file from archive {}".format(fname, self.file))
+            try:
+                with ZipFile(self.file) as zip_arch:
+                    for fname in zip_arch.namelist():
+                        if "uo" in fname.lower():
+                            logger.info("Reading {} file from archive {}".format(fname, self.file))
 
-                        if fname.lower().endswith(".xml"):
-                            with zip_arch.open(fname, 'r') as fp_raw:
-                                for l in self._iter_xml(fp_raw):
-                                    yield l
+                            if fname.lower().endswith(".xml"):
+                                with zip_arch.open(fname, 'r') as fp_raw:
+                                    for l in self._iter_xml(fp_raw):
+                                        yield l
 
-                        if fname.lower().endswith(".csv"):
-                            with zip_arch.open(fname, 'r') as fp_raw:
-                                for l in self._iter_csv(fp_raw):
-                                    yield l
+                            if fname.lower().endswith(".csv"):
+                                with zip_arch.open(fname, 'r') as fp_raw:
+                                    for l in self._iter_csv(fp_raw):
+                                        yield l
+            except BadZipFile as e:
+                logger.error("Zipfile {} is broken: {}".format(self.file, e))
+                return 
         elif self.file_type == "xml":
             for l in self._iter_xml(self.file):
                 yield l

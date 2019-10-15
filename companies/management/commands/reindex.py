@@ -47,11 +47,6 @@ class Command(BaseCommand):
             if not options["force"]:
                 qs = Company.objects.filter(is_dirty=True)
 
-        # qs = Company.objects.filter(
-        #     pk__in=CompanySnapshotFlags.objects.filter(
-        #         bo_changes_dates__len__gte=1
-        #     ).values_list("company_id", flat=True)
-        # )
         docs_to_index = []
 
         for p in tqdm(qs.nocache().iterator()):

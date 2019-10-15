@@ -45,62 +45,103 @@ def _compare_two_names(
 
     return max_similarity > smart_limit
 
+
 def full_compare(name1, name2):
     def normalize_name(s):
         return re.sub(r"\s+", " ", s.strip().replace("-", " "))
 
     def slugify_name(s):
-        return (
+        s = (
             s.replace(" ", "")
             .replace(".", "")
             .replace('"', "")
             .replace("'", "")
             .replace("’", "")
+            .replace("є", "е")
+            .replace("i", "и")
+            .replace("ь", "")
+            .replace("'", "")
+            .replace('"', "")
+            .replace('`', "")
+            .replace("’", "")
+            .replace("ʼ", "")
         )
+
+        return re.sub(r"\d+", "", s)
 
     name1 = normalize_name(name1)
     name2 = normalize_name(name2)
+    slugified_name1 = slugify_name(name1)
+    slugified_name2 = slugify_name(name2)
 
-    if slugify_name(name1) == slugify_name(name2):
+    if slugified_name1 == slugified_name2:
         return True
 
-    if jaro(slugify_name(name1), slugify_name(name2)) < 0.6:
+    if slugified_name1.startswith(slugified_name2) and len(slugified_name2) >= 10:
+        return True
+
+    if slugified_name2.startswith(slugified_name1) and len(slugified_name1) >= 10:
+        return True
+
+    if jaro(slugified_name1, slugified_name2) < 0.6:
         return False
 
+    if jaro(slugified_name1, slugified_name2) > 0.95:
+        return True
+
+    if jaro(slugified_name2, slugified_name1) > 0.95:
+        return True
+
     if _compare_two_names(name1, name2):
-        if jaro(slugify_name(name1), slugify_name(name2)) > 0.85 and DEBUG:
-            tqdm.write(f"compare\t{name1}\t{name2}\tTrue")
+        return True
 
-    res = _compare_two_names(name2, name1)
+    if _compare_two_names(name2, name1):
+        return True
 
-    if jaro(slugify_name(name1), slugify_name(name2)) > 0.85 and DEBUG:
-        tqdm.write(f"compare\t{name1}\t{name2}\t{res}")
-    return res
+    return False
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
     import csv
+    from veryprettytable import VeryPrettyTable
 
     if len(sys.argv) > 1:
-        with open(sys.argv[1], "r") as fp:
-            r = csv.reader(fp)
+        pt = VeryPrettyTable([" ", "Positive", "Negative"])
 
-            res = {
-                True: {True: 0, False: 0},
-                False: {True: 0, False: 0},
-            }
+        with open(sys.argv[1], "r") as fp:
+            r = csv.DictReader(fp)
+
+            res = {True: {True: 0, False: 0}, False: {True: 0, False: 0}}
 
             for l in r:
-                expected = l[2].lower() in ["true", "1", "on"]
-                actual = full_compare(l[0], l[1])
-                if actual != expected:
-                    print(l[0], l[1])
+                expected = l["ground truth"].lower() in ["true", "1", "on"]
+                predicted = full_compare(l["name1"], l["name2"])
+                if predicted != expected:
+                    print(predicted, expected, l["name1"], l["name2"])
 
-                res[actual==expected][expected] += 1
+                res[predicted][expected] += 1
 
-        for actual in [True, False]:
-            print(res[actual][actual], res[actual][not actual])
+        for predicted in [True, False]:
+            pt.add_row(
+                [
+                    "Predicted positive" if predicted else "Predicted negative",
+                    res[predicted][True],
+                    res[predicted][False],
+                ]
+            )
+
+        precision = res[True][True] / (res[True][True] + res[True][False])
+        recall = res[True][True] / (res[True][True] + res[False][True])
+        f1 = 2 * precision * recall / (precision + recall)
+
+        print(pt)
+
+        print("Precision: {:5.2f}".format(precision))
+        print("Recall: {:5.2f}".format(recall))
+        print("F1 score: {:5.2f}".format(f1))
 
     else:
-        print("Supply .csv file with ground truth data to calculate precision/recall/f1 metrics")
+        print(
+            "Supply .csv file with ground truth data to calculate precision/recall/f1 metrics"
+        )
