@@ -573,7 +573,7 @@ class Command(BaseCommand):
                         company_records_to_add_revision.append(company_record_hash)
                         company_records_with_no_revision.add(company_record_hash)
 
-                if len(companies_to_create) >= 10000 or len(persons_to_create) >= 10000:
+                if len(companies_to_create) >= 1000 or len(persons_to_create) >= 1000:
                     Company.objects.bulk_create(companies_to_create)
                     CompanyRecord.objects.bulk_create(company_records_to_create)
                     companies_to_create = []
@@ -592,7 +592,7 @@ class Command(BaseCommand):
 
                         company_records_to_add_revision = []
 
-                if len(persons_to_create) >= 10000:
+                if len(persons_to_create) >= 1000:
                     Person.objects.bulk_create(persons_to_create)
                     persons_to_create = []
 
@@ -639,7 +639,7 @@ class Command(BaseCommand):
                     )
 
         if dirty_companies:
-            for update_me in chunkify(dirty_companies, 10000):
+            for update_me in chunkify(dirty_companies, 1000):
                 logger.debug(
                     "Updating {} records in db as dirty".format(len(update_me))
                 )
