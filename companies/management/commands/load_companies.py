@@ -597,13 +597,15 @@ class Command(BaseCommand):
                     persons_to_create = []
 
                     if persons_to_add_revision:
+                        logger.info("Adding revisions to {} persons".format(len(persons_to_add_revision)))
                         with connection.cursor() as cursor:
-                            hashes_str = ",".join("'{}'".format(s) for s in persons_to_add_revision)
-                            cursor.execute(
-                                "UPDATE " + Person._meta.db_table + "  SET revisions = revisions || '{%s}' " +
-                                "WHERE person_hash IN (" + hashes_str + ")",
-                                [int(revision.pk)]
-                            )
+                            for update_me in chunkify(persons_to_add_revision, 1000):
+                                hashes_str = ",".join("'{}'".format(s) for s in update_me)
+                                cursor.execute(
+                                    "UPDATE " + Person._meta.db_table + "  SET revisions = revisions || '{%s}' " +
+                                    "WHERE person_hash IN (" + hashes_str + ")",
+                                    [int(revision.pk)]
+                                )
 
                         persons_to_add_revision = []
 
@@ -626,13 +628,15 @@ class Command(BaseCommand):
                 )
 
         if persons_to_add_revision:
+            logger.info("Adding revisions to {} persons".format(len(persons_to_add_revision)))
             with connection.cursor() as cursor:
-                hashes_str = ",".join("'{}'".format(s) for s in persons_to_add_revision)
-                cursor.execute(
-                    "UPDATE " + Person._meta.db_table + "  SET revisions = revisions || '{%s}' " +
-                    "WHERE person_hash IN (" + hashes_str + ")",
-                    [int(revision.pk)]
-                )
+                for update_me in chunkify(persons_to_add_revision, 1000):
+                    hashes_str = ",".join("'{}'".format(s) for s in update_me)
+                    cursor.execute(
+                        "UPDATE " + Person._meta.db_table + "  SET revisions = revisions || '{%s}' " +
+                        "WHERE person_hash IN (" + hashes_str + ")",
+                        [int(revision.pk)]
+                    )
 
         if dirty_companies:
             for update_me in chunkify(dirty_companies, 10000):
