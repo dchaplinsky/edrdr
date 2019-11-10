@@ -107,6 +107,37 @@
                             <div class="mb-20"><strong >{{ latest_record.get_status_display() }}</strong></div>
                             <p><a href="{{ url('search>results') }}?q={{ latest_record.location|urlencode }}&is_addr=true" target="_blank" class="search-for"><span itemprop="address">{{ latest_record.location }}</span></a></p>
                             <p>{{ latest_record.company_profile }}</p>
+                            {% if extra_details.charter_capital %}
+                            <p>
+                            <strong>{{ _("Статутний капітал") }}:</strong> {{ extra_details.charter_capital|curformat }} {{ _("грн.") }}
+                            </p>
+                            {% endif %}
+                            {% if extra_details.phone1 or extra_details.phone2 %}
+                            <p>
+                            <strong>{{ _("Телефони") }}:</strong>
+                            {% set pipe = joiner(", ") %}
+                            {% if extra_details.phone1 -%}{{ pipe() }}<a href="{{ url('search>results') }}?q={{ extra_details.phone1|truncate_phone }}">{{ extra_details.phone1|format_phone }}</a>{% endif %}{% if extra_details.phone2 %}{{ pipe() }}<a href="{{ url('search>results') }}?q={{ extra_details.phone2|truncate_phone }}">{{ extra_details.phone2|format_phone }}</a>
+                            {% endif %}
+                            </p>
+                            {% endif %}
+                            {% if extra_details.fax %}
+                            <p>
+                            <strong>{{ _("Факс") }}:</strong> {{ extra_details.fax }}
+                            </p>
+                            {% endif %}
+
+                            {% if extra_details.form %}
+                            <p>
+                            <strong>{{ _("Організаційно-правова форма") }}:</strong> {{ _(extra_details.form) }}
+                            </p>
+                            {% endif %}
+
+                            {% if extra_details.reg_date %}
+                            <p>
+                            <strong>{{ _("Дата реєстрації") }}:</strong> {{ extra_details.reg_date|date }}
+                            </p>
+                            {% endif %}
+
                             <hr>
                             {% if latest_record_revision in global_revisions %}
                             <div>{{ _("Оновлено від") }} <a href="{{ global_revisions[latest_record_revision].get_absolute_url() }}">{{ global_revisions[latest_record_revision].created|datetime }}</a></div>

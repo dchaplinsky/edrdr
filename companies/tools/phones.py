@@ -1,6 +1,24 @@
 import phonenumbers
 
 
+def truncate_phone(phone):
+    return (
+        phone.strip()
+        .replace("(", "")
+        .replace(")", "")
+        .replace("-", "")
+        .replace(" ", "")
+    )
+
+
+def format_phone(phone):
+    try:
+        parsed = phonenumbers.parse(phone, "UA")
+        return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+    except phonenumbers.NumberParseException:
+        return truncate_phone(phone)
+
+
 def phone_variants(phone):
     def delim(phone, divider):
         if len(phone) == 7:
@@ -15,13 +33,7 @@ def phone_variants(phone):
 
     res = set([phone.strip()])
 
-    stripped_phone = (
-        phone.strip()
-        .replace("(", "")
-        .replace(")", "")
-        .replace("-", "")
-        .replace(" ", "")
-    )
+    stripped_phone = truncate_phone(phone)
 
     res.add(stripped_phone)
     default = None

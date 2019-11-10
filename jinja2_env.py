@@ -1,3 +1,4 @@
+from datetime import date
 from django.contrib.staticfiles.storage import staticfiles_storage
 from django.utils import formats, timezone
 from django.urls import reverse
@@ -7,6 +8,7 @@ from jinja2 import Environment
 
 from names_translator.name_utils import title
 from companies.tools.formaters import ukr_plural, curformat
+from companies.tools.phones import format_phone, truncate_phone
 from names_translator.name_utils import parse_and_generate
 
 
@@ -28,30 +30,60 @@ def ensure_aware(dt):
         return timezone.make_aware(dt)
 
 
-def environment(**options):
-    env = Environment(**options)
-    env.globals.update({
-        'static': staticfiles_storage.url,
-        'url': reverse,
-    })
-    env.install_gettext_callables(
-        gettext=gettext, ngettext=ngettext, newstyle=True
-    )
-
-    env.filters.update({
-        "datetime": lambda dt: formats.date_format(
+def datetime_filter(dt, dayfirst=False):
+    return (
+        formats.date_format(
             timezone.localtime(
-               ensure_aware(timezone.make_aware(parse_dt(dt)) if isinstance(dt, str) else dt)
+                ensure_aware(
+                    parse_dt(dt, dayfirst=dayfirst) if isinstance(dt, str) else dt
+                )
             ),
             "DATE_FORMAT",
-        ),
-        'title': title,
-        'uk_plural': ukr_plural,
-        'curformat': curformat,
-    })
-    env.globals.update({
-        'updated_querystring': updated_querystring,
-        'parse_and_generate': parse_and_generate
-    })
+        )
+        if dt
+        else ""
+    )
+
+
+def date_filter(dt, dayfirst=False):
+    if isinstance(dt, date):
+        return formats.date_format(dt, "DATE_FORMAT")
+
+    return (
+        formats.date_format(
+            timezone.localtime(
+                ensure_aware(
+                    parse_dt(dt, dayfirst=dayfirst) if isinstance(dt, str) else dt
+                )
+            ),
+            "DATE_FORMAT",
+        )
+        if dt
+        else ""
+    )
+
+
+def environment(**options):
+    env = Environment(**options)
+    env.globals.update({"static": staticfiles_storage.url, "url": reverse})
+    env.install_gettext_callables(gettext=gettext, ngettext=ngettext, newstyle=True)
+
+    env.filters.update(
+        {
+            "datetime": datetime_filter,
+            "date": date_filter,
+            "title": title,
+            "uk_plural": ukr_plural,
+            "curformat": curformat,
+            "format_phone": format_phone,
+            "truncate_phone": truncate_phone,
+        }
+    )
+    env.globals.update(
+        {
+            "updated_querystring": updated_querystring,
+            "parse_and_generate": parse_and_generate,
+        }
+    )
 
     return env

@@ -702,6 +702,16 @@ class Company(models.Model):
             ]
         )
 
+        extra_details = {
+            "charter_capital": None,
+            "form": None,
+            "reg_date": None,
+            "phone1": None,
+            "phone2": None,
+            "email": None,
+            "fax": None,
+        }
+
         for rec in self.records.iterator():
             for r in rec.revisions:
                 if r in records_revisions:
@@ -714,6 +724,11 @@ class Company(models.Model):
                 latest_record = rec
                 latest_record_revision = max_revision
             used_revisions |= set(rec.revisions)
+
+            for field in extra_details.keys():
+                field_val = getattr(rec, field, None)
+                if field_val:
+                    extra_details[field] = field_val
 
         # Now let's sort company records inside each revision
         for r, records in records_revisions.items():
@@ -744,6 +759,7 @@ class Company(models.Model):
         return {
             "global_revisions": global_revisions,
             "used_revisions": sorted(used_revisions),
+            "extra_details": extra_details,
             "latest_record": latest_record,
             "latest_record_revision": latest_record_revision,
             "grouped_company_records": self.group_revisions(
