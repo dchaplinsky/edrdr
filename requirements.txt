@@ -22,3 +22,4 @@ Werkzeug==0.15.6
 raven==6.9.0
 fuzzywuzzy[speedup]==0.17.0
 veryprettytable==0.8.1
+phonenumbers==8.10.22

@@ -41,5 +41,10 @@ class Command(BaseCommand):
 
             CompanyRecord.objects.filter(company_id=edrpou).nocache().update(
                 charter_capital=capital,
-                reg_date=reg_date
+                reg_date=reg_date,
+                form=l["form"],
+                phone1=l["phone1"],
+                phone2=l["phone2"],
+                email=l["email"],
+                fax=l["fax"],
             )

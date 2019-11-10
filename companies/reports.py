@@ -20,13 +20,14 @@ class GlobalStats:
         curr_line = 0
         worksheet.write(curr_line, 0, "ЄДРПОУ")
         worksheet.write(curr_line, 1, "Назва")
-        worksheet.write(curr_line, 2, "Власники")
-        worksheet.write(curr_line, 3, "З")
-        worksheet.write(curr_line, 4, "По")
-        worksheet.write(curr_line, 5, "Власник (ПІБ)")
-        worksheet.write(curr_line, 6, "Власник (Повний запис)")
-        worksheet.write(curr_line, 7, "Статутний капітал")
-        worksheet.write(curr_line, 8, "Поточний статус")
+        worksheet.write(curr_line, 2, "ОПФ")
+        worksheet.write(curr_line, 3, "Власники")
+        worksheet.write(curr_line, 4, "З")
+        worksheet.write(curr_line, 5, "По")
+        worksheet.write(curr_line, 6, "Власник (ПІБ)")
+        worksheet.write(curr_line, 7, "Власник (Повний запис)")
+        worksheet.write(curr_line, 8, "Статутний капітал")
+        worksheet.write(curr_line, 10, "Поточний статус")
         dt_format = outfile.add_format({"num_format": "dd/mm/yy"})
         header_format = outfile.add_format({"bold": True, "align": "center_across"})
         owner_format = outfile.add_format({"color": "green"})
@@ -94,18 +95,22 @@ class GlobalStats:
                             )
 
                             worksheet.write(
-                                curr_line, 8, latest_company_rec.get_status_display()
+                                curr_line, 2, latest_company_rec.form
+                            )
+
+                            worksheet.write(
+                                curr_line, 9, latest_company_rec.get_status_display()
                             )
 
                         if latest_flags_rec is not None:
                             worksheet.write(
-                                curr_line, 7, latest_flags_rec.charter_capital
+                                curr_line, 8, latest_flags_rec.charter_capital
                             )
 
                         if latest_founder_recs:
                             worksheet.write(
                                 curr_line,
-                                2,
+                                3,
                                 ", ".join(
                                     set(
                                         name
@@ -117,28 +122,28 @@ class GlobalStats:
 
                         if not grouped_records:
                             worksheet.write(
-                                curr_line, 3, "Бенефіціарів/власників не вказано"
+                                curr_line, 4, "Бенефіціарів/власників не вказано"
                             )
                         else:
                             for group in grouped_records:
                                 worksheet.write(
                                     curr_line,
-                                    3,
+                                    4,
                                     group["start_revision"].created,
                                     dt_format,
                                 )
                                 worksheet.write(
                                     curr_line,
-                                    4,
+                                    5,
                                     group["finish_revision"].created,
                                     dt_format,
                                 )
 
                                 for r in group["record"]:
-                                    worksheet.write(curr_line, 5, ", ".join(r.name))
+                                    worksheet.write(curr_line, 6, ", ".join(r.name))
                                     worksheet.write(
                                         curr_line,
-                                        6,
+                                        7,
                                         r.raw_record,
                                         owner_format
                                         if r.person_type == "owner"
@@ -741,11 +746,11 @@ class GlobalStats:
 
     def number_of_companies_that_self_owned(self):
         """Кількість компаній, де одним з власників є сама компанія"""
-        return self.count_and_sample(self.all_companies_that_self_owned())
+        return self.count_and_sample(self.all_companies_that_self_owned(), number_of_samples=5000)
 
     def number_of_companies_that_indirectly_self_owned(self):
         """Кількість компаній, де одним з власників є сама компанія через низку інших компаній (до 7)"""
-        return self.count_and_sample(self.all_companies_that_indirectly_self_owned())
+        return self.count_and_sample(self.all_companies_that_indirectly_self_owned(), number_of_samples=5000)
 
     def number_of_companies_with_high_risk(self):
         """Кількість компаній з ознаками фіктивності: статутний фонд до 1000 грн, директор та власник одна і та ж фізична особа, адреса масової реєстрації."""

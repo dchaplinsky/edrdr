@@ -14,6 +14,7 @@ from Levenshtein import jaro
 from fuzzywuzzy import fuzz
 from tokenize_uk import tokenize_words
 from companies.exceptions import StatusDoesntExist, TooManyVariantsError
+from companies.tools.phones import phone_variants
 
 from names_translator.name_utils import parse_and_generate, autocomplete_suggestions
 
@@ -567,6 +568,11 @@ class Company(models.Model):
             addresses.add(company_record.location)
             addresses.add(company_record.parsed_location)
             addresses.add(company_record.validated_location)
+            raw_records |= phone_variants(company_record.phone1)
+            raw_records |= phone_variants(company_record.phone2)
+            raw_records |= phone_variants(company_record.fax)
+            raw_records.add(company_record.email)
+            raw_records.add(company_record.form)
 
             company_profiles.add(company_record.company_profile)
             companies.add(company_record.name)
@@ -643,7 +649,9 @@ class Company(models.Model):
 
         for r, revision in revisions.items():
             rec = records.get(r)
+
             if rec is None:
+                # print(revision, current_hash)
                 if current_hash is not None:
                     # Record disappeared from a history at some point
                     add_group(current_record)
@@ -669,7 +677,6 @@ class Company(models.Model):
                 finish_revision = revision
 
         add_group(current_record)
-
         return periods
 
     def key_by_company_status(self, obj):
@@ -695,7 +702,7 @@ class Company(models.Model):
             ]
         )
 
-        for rec in self.records.all():
+        for rec in self.records.iterator():
             for r in rec.revisions:
                 if r in records_revisions:
                     records_revisions[r].append(rec)
@@ -715,7 +722,7 @@ class Company(models.Model):
             )
 
         persons_revisions = defaultdict(list)
-        for p in self.persons.filter(persons_filter_clause):
+        for p in self.persons.filter(persons_filter_clause).iterator():
             max_revision = max(p.revisions)
             for r in p.revisions:
                 persons_revisions[r].append(p)
@@ -839,7 +846,13 @@ class CompanyRecord(models.Model):
         "Валідована Квартира/офіс/кімната", max_length=100, default=""
     )
     charter_capital = models.FloatField(null=True, default=None)
+    form = models.CharField(null=True, default=None, max_length=500)
     reg_date = models.DateField(null=True)
+
+    phone1 = models.CharField(null=True, default=None, max_length=50)
+    phone2 = models.CharField(null=True, default=None, max_length=50)
+    email = models.CharField(null=True, default=None, max_length=100)
+    fax = models.CharField(null=True, default=None, max_length=50)
 
     objects = CompanyRecordManager()
 
