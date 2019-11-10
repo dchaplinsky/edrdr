@@ -116,13 +116,13 @@
                             <p>
                             <strong>{{ _("Телефони") }}:</strong>
                             {% set pipe = joiner(", ") %}
-                            {% if extra_details.phone1 -%}{{ pipe() }}<a href="{{ url('search>results') }}?q={{ extra_details.phone1|truncate_phone }}">{{ extra_details.phone1|format_phone }}</a>{% endif %}{% if extra_details.phone2 %}{{ pipe() }}<a href="{{ url('search>results') }}?q={{ extra_details.phone2|truncate_phone }}">{{ extra_details.phone2|format_phone }}</a>
+                            {% if extra_details.phone1 -%}{{ pipe() }}<a href="{{ url('search>results') }}?q={{ extra_details.phone1|truncate_phone }}"><span itemprop="telephone">{{ extra_details.phone1|format_phone }}</span></a>{% endif %}{% if extra_details.phone2 %}{{ pipe() }}<a href="{{ url('search>results') }}?q={{ extra_details.phone2|truncate_phone }}"><span itemprop="telephone">{{ extra_details.phone2|format_phone }}</span></a>
                             {% endif %}
                             </p>
                             {% endif %}
                             {% if extra_details.fax %}
                             <p>
-                            <strong>{{ _("Факс") }}:</strong> {{ extra_details.fax }}
+                            <strong>{{ _("Факс") }}:</strong><a href="{{ url('search>results') }}?q={{ extra_details.fax|truncate_phone }}"><span itemprop="faxNumber">{{ extra_details.fax|format_phone }}</span></a>
                             </p>
                             {% endif %}
 
@@ -134,7 +134,7 @@
 
                             {% if extra_details.reg_date %}
                             <p>
-                            <strong>{{ _("Дата реєстрації") }}:</strong> {{ extra_details.reg_date|date }}
+                            <strong>{{ _("Дата реєстрації") }}:</strong> <span itemprop="foundingDate">{{ extra_details.reg_date|date }}</span>
                             </p>
                             {% endif %}
 
