@@ -574,8 +574,8 @@ class Command(BaseCommand):
                         company_records_with_no_revision.add(company_record_hash)
 
                 if len(companies_to_create) >= 1000 or len(persons_to_create) >= 1000:
-                    Company.objects.bulk_create(companies_to_create)
-                    CompanyRecord.objects.bulk_create(company_records_to_create)
+                    Company.objects.bulk_create(companies_to_create, batch_size=100)
+                    CompanyRecord.objects.bulk_create(company_records_to_create, batch_size=100)
                     companies_to_create = []
                     company_records_to_create = []
 
@@ -593,7 +593,7 @@ class Command(BaseCommand):
                         company_records_to_add_revision = []
 
                 if len(persons_to_create) >= 1000:
-                    Person.objects.bulk_create(persons_to_create)
+                    Person.objects.bulk_create(persons_to_create, batch_size=100)
                     persons_to_create = []
 
                     if persons_to_add_revision:
@@ -610,13 +610,13 @@ class Command(BaseCommand):
                         persons_to_add_revision = []
 
         if companies_to_create:
-            Company.objects.bulk_create(companies_to_create)
+            Company.objects.bulk_create(companies_to_create, batch_size=100)
 
         if company_records_to_create:
-            CompanyRecord.objects.bulk_create(company_records_to_create)
+            CompanyRecord.objects.bulk_create(company_records_to_create, batch_size=100)
 
         if persons_to_create:
-            Person.objects.bulk_create(persons_to_create)
+            Person.objects.bulk_create(persons_to_create, batch_size=100)
 
         if company_records_to_add_revision:
             with connection.cursor() as cursor:
@@ -630,7 +630,7 @@ class Command(BaseCommand):
         if persons_to_add_revision:
             logger.info("Adding revisions to {} persons".format(len(persons_to_add_revision)))
             with connection.cursor() as cursor:
-                for update_me in chunkify(persons_to_add_revision, 1000):
+                for update_me in chunkify(persons_to_add_revision, 300):
                     hashes_str = ",".join("'{}'".format(s) for s in update_me)
                     cursor.execute(
                         "UPDATE " + Person._meta.db_table + "  SET revisions = revisions || '{%s}' " +
@@ -639,7 +639,7 @@ class Command(BaseCommand):
                     )
 
         if dirty_companies:
-            for update_me in chunkify(dirty_companies, 1000):
+            for update_me in chunkify(dirty_companies, 300):
                 logger.debug(
                     "Updating {} records in db as dirty".format(len(update_me))
                 )

@@ -38,7 +38,7 @@ class Command(LoadCommand):
 
         parser.add_argument(
             "--guid",
-            default="b0476139-62f2-4ede-9d3b-884ad99afd08",
+            default="06bbccbd-e19c-40d5-9e18-447b110c0b4c",
             help="Dataset to retrieve",
         )
 
@@ -79,6 +79,8 @@ class Command(LoadCommand):
 
             with open(full_path, "wb") as f:
                 shutil.copyfileobj(r.raw, f)
+
+            sleep(5)
 
         with open(full_path, "rb") as fp:
             self.load_file(
@@ -136,7 +138,6 @@ class Command(LoadCommand):
                 self.handle_one_revision_from_new_data_gov(
                     options["guid"], timestamp, data_url, revision, options["overwrite"]
                 )
-                sleep(5)
 
                 if options["revision"] != "all":
                     break
