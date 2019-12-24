@@ -651,7 +651,6 @@ class Company(models.Model):
             rec = records.get(r)
 
             if rec is None:
-                # print(revision, current_hash)
                 if current_hash is not None:
                     # Record disappeared from a history at some point
                     add_group(current_record)
@@ -697,7 +696,7 @@ class Company(models.Model):
             [
                 (r.pk, r)
                 for r in Revision.objects.filter(imported=True, ignore=False).order_by(
-                    "pk"
+                    "created"
                 )
             ]
         )
@@ -733,14 +732,14 @@ class Company(models.Model):
         # Now let's sort company records inside each revision
         for r, records in records_revisions.items():
             records_revisions[r] = sorted(
-                records, key=self.key_by_company_status, reverse=True
+                set(records), key=self.key_by_company_status, reverse=True
             )
 
-        persons_revisions = defaultdict(list)
+        persons_revisions = defaultdict(set)
         for p in self.persons.filter(persons_filter_clause).iterator():
             max_revision = max(p.revisions)
             for r in p.revisions:
-                persons_revisions[r].append(p)
+                persons_revisions[r].add(p)
 
             if max_revision > latest_persons_revision:
                 latest_persons = [p]
