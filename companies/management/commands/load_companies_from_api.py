@@ -117,8 +117,12 @@ class Command(LoadCommand):
             self.stderr.write("Unsuccessful response from api.")
             return
 
-        response["result"]["resource_revisions"].reverse()
-        for rev in tqdm(response["result"]["resource_revisions"]):
+        revisions = sorted(
+            response["result"]["resource_revisions"],
+            key=lambda x: parse(x["resource_created"])
+        )
+
+        for rev in tqdm(revisions):
             revision = rev["url"].strip("/").rsplit("/", 1)[-1]
 
             if (
