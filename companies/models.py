@@ -619,6 +619,7 @@ class Company(models.Model):
         return {
             "full_edrpou": self.full_edrpou,
             "addresses": list(filter(None, addresses)),
+            "raw_persons": list(filter(None, persons)),
             "persons": list(filter(None, all_persons)),
             "companies": list(filter(None, companies)),
             "company_profiles": list(filter(None, company_profiles)),

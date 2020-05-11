@@ -31,6 +31,27 @@ class CompanyDetail(DetailView):
         return context
 
 
+class APIView(View):
+    def get(self, request):
+        edrpous = map(lambda x: x.lstrip("0"), request.GET.getlist("edrpou", []))
+
+        queryset = Company.objects.prefetch_related("records", "persons").filter(
+            pk__in=list(edrpous)
+        )
+
+        return JsonResponse(
+            {
+                c.pk: {
+                    k: v
+                    for k, v in c.to_dict().items()
+                    if k in ["raw_persons", "latest_record"]
+                }
+                for c in queryset.iterator()
+            },
+            safe=False,
+        )
+
+
 class SuggestView(View):
     def get(self, request):
         q = request.GET.get("q", "").strip()

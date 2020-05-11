@@ -11,7 +11,7 @@ from django.views.decorators.cache import cache_page
 
 from companies.views import (
     CompanyDetail, RevisionDetail, SuggestView, HomeView, SearchView,
-    AboutSearchView, AboutAPIView
+    AboutSearchView, AboutAPIView, APIView
 )
 
 from companies.sitemaps import sitemaps
@@ -28,6 +28,7 @@ urlpatterns = i18n_patterns(
 ) + [
     path('about', TemplateView.as_view(template_name="companies/about.html"),
          name="about"),
+    path('secret_api', APIView.as_view(), name="api"),
 
     path('sitemap.xml',
          cache_page(86400)(sitemaps_views.index),
