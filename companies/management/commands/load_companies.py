@@ -582,13 +582,14 @@ class Command(BaseCommand):
                     if company_records_to_add_revision:
                         with connection.cursor() as cursor:
                             # Fuck, cannot believe I'm doing that
-                            hashes_str = ",".join("'{}'".format(s) for s in company_records_to_add_revision)
-                            # Guess what? There are no support of adding something to PG arrays through django ORM
-                            cursor.execute(
-                                "UPDATE " + CompanyRecord._meta.db_table + "  SET revisions = revisions || '{%s}' " +
-                                "WHERE company_hash IN (" + hashes_str + ")",
-                                [int(revision.pk)]
-                            )
+                            for update_me in chunkify(company_records_to_add_revision, 100):
+                                hashes_str = ",".join("'{}'".format(s) for s in update_me)
+                                # Guess what? There are no support of adding something to PG arrays through django ORM
+                                cursor.execute(
+                                    "UPDATE " + CompanyRecord._meta.db_table + "  SET revisions = revisions || '{%s}' " +
+                                    "WHERE company_hash IN (" + hashes_str + ")",
+                                    [int(revision.pk)]
+                                )
 
                         company_records_to_add_revision = []
 
@@ -599,7 +600,7 @@ class Command(BaseCommand):
                     if persons_to_add_revision:
                         logger.info("Adding revisions to {} persons".format(len(persons_to_add_revision)))
                         with connection.cursor() as cursor:
-                            for update_me in chunkify(persons_to_add_revision, 1000):
+                            for update_me in chunkify(persons_to_add_revision, 100):
                                 hashes_str = ",".join("'{}'".format(s) for s in update_me)
                                 cursor.execute(
                                     "UPDATE " + Person._meta.db_table + "  SET revisions = revisions || '{%s}' " +
