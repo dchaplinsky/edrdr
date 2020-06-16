@@ -49,7 +49,7 @@ class Command(BaseCommand):
 
         docs_to_index = []
 
-        for p in tqdm(qs.nocache().iterator()):
+        for p in tqdm(qs.nocache().iterator(), total=qs.count()):
             docs_to_index.append(ElasticCompany(**p.to_dict()))
             if len(docs_to_index) > 2000:
                 self.bulk_write(conn, docs_to_index)

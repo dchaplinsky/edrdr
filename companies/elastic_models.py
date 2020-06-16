@@ -2,12 +2,21 @@ from django.conf import settings
 
 from Levenshtein import distance
 from elasticsearch_dsl import (
-    DocType, Keyword, Text, Index, analyzer, tokenizer, token_filter,
-    MultiSearch, MetaField, Object)
+    DocType,
+    Keyword,
+    Text,
+    Index,
+    analyzer,
+    tokenizer,
+    token_filter,
+    MultiSearch,
+    MetaField,
+    Object,
+)
 from elasticsearch_dsl.query import Q
 
-ADDRESSES_INDEX = 'edrdr_addresses'
-COMPANIES_INDEX = 'edrdr_companies'
+ADDRESSES_INDEX = "edrdr_addresses"
+COMPANIES_INDEX = "edrdr_companies"
 
 
 class Address(DocType):
@@ -30,52 +39,53 @@ class Address(DocType):
     oldDistrict = Keyword(index=True, copy_to="all")
     oldLocality = Keyword(index=True, copy_to="all")
     all = Text(
-        analyzer='ukrainian',
+        analyzer="ukrainian",
         fields={
-            "shingle": Text(analyzer="shingleAnalyzer", search_analyzer="shingleAnalyzer",)
-        }
+            "shingle": Text(
+                analyzer="shingleAnalyzer", search_analyzer="shingleAnalyzer"
+            )
+        },
     )
-
 
     @classmethod
     def validate(cls, address):
         try:
             if "fullAddress" not in address:
-                address["fullAddress"] = ''
+                address["fullAddress"] = ""
 
             if "source" not in address:
-                address["source"] = ''
+                address["source"] = ""
 
             ms = MultiSearch(index=ADDRESSES_INDEX)
 
             should = []
             if "postalCode" in address:
-                should.append(Q('match', postalCode=address["postalCode"]))
+                should.append(Q("match", postalCode=address["postalCode"]))
             if "region" in address:
-                should.append(Q('match', region=address["region"]))
+                should.append(Q("match", region=address["region"]))
 
             if "fullAddress" in address:
                 ms = ms.add(
                     cls.search().query(
                         "bool",
                         must=Q(
-                            'simple_query_string',
-                            fields=['all.shingle'],
+                            "simple_query_string",
+                            fields=["all.shingle"],
                             query=address["fullAddress"],
-                            default_operator='or'
+                            default_operator="or",
                         ),
-                        should=should
+                        should=should,
                     )
                 ).add(
                     cls.search().query(
                         "bool",
                         must=Q(
-                            'simple_query_string',
-                            fields=['all'],
+                            "simple_query_string",
+                            fields=["all"],
                             query=address["fullAddress"],
-                            default_operator='or'
+                            default_operator="or",
                         ),
-                        should=should
+                        should=should,
                     )
                 )
 
@@ -84,12 +94,12 @@ class Address(DocType):
                     cls.search().query(
                         "bool",
                         must=Q(
-                            'simple_query_string',
-                            fields=['all'],
+                            "simple_query_string",
+                            fields=["all"],
                             query=address["source"],
-                            default_operator='or'
+                            default_operator="or",
                         ),
-                        should=should
+                        should=should,
                     )
                 )
 
@@ -103,7 +113,7 @@ class Address(DocType):
                     max_score = resp.hits.max_score
 
             if new_address:
-                address["fullAddress"] = ''
+                address["fullAddress"] = ""
 
                 if new_address.get("postalCode"):
                     address["postalCode"] = new_address["postalCode"].rjust(5, "0")
@@ -112,29 +122,48 @@ class Address(DocType):
                 if new_address.get("region"):
                     address["region"] = new_address["region"]
 
-                if new_address.get("region") not in ['місто Київ', 'місто Севастополь']:
-                    address["fullAddress"] += ', ' + address["region"]
+                if new_address.get("region") not in ["місто Київ", "місто Севастополь"]:
+                    address["fullAddress"] += ", " + address["region"]
 
                 if new_address.get("district"):
                     address["district"] = new_address["district"]
-                    address["fullAddress"] += ', ' + address["district"]
+                    address["fullAddress"] += ", " + address["district"]
 
                 if address.get("locality") and new_address.get("locality"):
-                    if (distance(new_address["locality"].lower(), address["locality"].lower()) < 6 or
-                            distance(new_address["oldLocality"].lower(), address["locality"].lower()) < 6):
+                    if (
+                        distance(
+                            new_address["locality"].lower(), address["locality"].lower()
+                        )
+                        < 6
+                        or distance(
+                            new_address["oldLocality"].lower(),
+                            address["locality"].lower(),
+                        )
+                        < 6
+                    ):
                         address["locality"] = new_address["locality"]
 
-                    address["fullAddress"] += ', ' + address["locality"]
+                    address["fullAddress"] += ", " + address["locality"]
                 elif new_address.get("locality"):
                     address["locality"] = new_address["locality"]
-                    address["fullAddress"] += ', ' + address["locality"]
+                    address["fullAddress"] += ", " + address["locality"]
 
                 if address.get("streetAddress") and new_address.get("street"):
-                    if (distance(new_address["street"].lower(), address["streetAddress"].lower()) < 6 or
-                            distance(new_address["oldStreet"].lower(), address["streetAddress"].lower()) < 6):
+                    if (
+                        distance(
+                            new_address["street"].lower(),
+                            address["streetAddress"].lower(),
+                        )
+                        < 6
+                        or distance(
+                            new_address["oldStreet"].lower(),
+                            address["streetAddress"].lower(),
+                        )
+                        < 6
+                    ):
                         address["streetAddress"] = new_address["street"]
 
-                    address["fullAddress"] += ', ' + address["streetAddress"]
+                    address["fullAddress"] += ", " + address["streetAddress"]
 
                 if new_address.get("oldStreet"):
                     address["oldStreet"] = new_address["oldStreet"]
@@ -146,8 +175,8 @@ class Address(DocType):
                     address["oldLocality"] = new_address["oldLocality"]
 
                 if address.get("streetNumber"):
-                    address["streetAddress"] += ', ' + address["streetNumber"]
-                    address["fullAddress"] += ', ' + address["streetNumber"]
+                    address["streetAddress"] += ", " + address["streetNumber"]
+                    address["fullAddress"] += ", " + address["streetNumber"]
 
                     del address["streetNumber"]
         except (ValueError, KeyError, IndexError) as e:
@@ -162,64 +191,48 @@ class Address(DocType):
 
 addresses_idx = Index(ADDRESSES_INDEX)
 
-addresses_idx.settings(
-    number_of_shards=settings.NUM_THREADS,
-    number_of_replicas=0
-)
+addresses_idx.settings(number_of_shards=settings.NUM_THREADS, number_of_replicas=0)
 
 addresses_idx.doc_type(Address)
 
 shingle_analyzer = analyzer(
-    'shingleAnalyzer',
+    "shingleAnalyzer",
     tokenizer=tokenizer(
-        'ukrainianTokenizer',
-        type='pattern',
-        pattern='[А-ЯЄІЇҐа-яєіїґA-Za-z0-9\']+'
+        "ukrainianTokenizer", type="pattern", pattern="[А-ЯЄІЇҐа-яєіїґA-Za-z0-9']+"
     ),
     filter=[
         token_filter(
-            'shingleFilter',
-            type='shingle',
+            "shingleFilter",
+            type="shingle",
             max_shingle_size=5,
             min_shingle_size=2,
-            output_unigrams=True
+            output_unigrams=True,
         ),
-        'lowercase'
+        "lowercase",
     ],
 )
 
 addresses_idx.analyzer(shingle_analyzer)
 
 companies_idx = Index(COMPANIES_INDEX)
-companies_idx.settings(
-    number_of_shards=settings.NUM_THREADS,
-    number_of_replicas=0
-)
+companies_idx.settings(number_of_shards=settings.NUM_THREADS, number_of_replicas=0)
 
 namesAutocompleteAnalyzer = analyzer(
-    'namesAutocompleteAnalyzer',
+    "namesAutocompleteAnalyzer",
     tokenizer=tokenizer(
-        'autocompleteTokenizer',
-        type='edge_ngram',
+        "autocompleteTokenizer",
+        type="edge_ngram",
         min_gram=1,
         max_gram=25,
-        token_chars=[
-            'letter',
-            'digit'
-        ]
+        token_chars=["letter", "digit"],
     ),
-    filter=[
-        "lowercase"
-    ]
+    filter=["lowercase"],
 )
 
 namesAutocompleteSearchAnalyzer = analyzer(
-    'namesAutocompleteSearchAnalyzer',
+    "namesAutocompleteSearchAnalyzer",
     tokenizer=tokenizer("whitespace"),
-
-    filter=[
-        "lowercase"
-    ]
+    filter=["lowercase"],
 )
 
 ukrainianStopwordsAnalyzer = analyzer(
@@ -227,17 +240,43 @@ ukrainianStopwordsAnalyzer = analyzer(
     type="ukrainian",
     filter=[
         token_filter(
-            'addresses_stopwords',
-            type='stop',
+            "addresses_stopwords",
+            type="stop",
             stopwords=[
-                'будинок', 'обл', 'район', 'вулиця', 'місто', 'м', 'квартира', 'вул', 'село',
-                'буд', 'кв', 'проспект', 'область', 'селище', 'міського', 'типу', 'офіс', 'н',
-                'р', 'б', 'с', 'провулок', 'корпус', 'бульвар', 'кімната', 'шосе', 'в', 'смт',
-                'просп', '№'
-            ]
+                "будинок",
+                "обл",
+                "район",
+                "вулиця",
+                "місто",
+                "м",
+                "квартира",
+                "вул",
+                "село",
+                "буд",
+                "кв",
+                "проспект",
+                "область",
+                "селище",
+                "міського",
+                "типу",
+                "офіс",
+                "н",
+                "р",
+                "б",
+                "с",
+                "провулок",
+                "корпус",
+                "бульвар",
+                "кімната",
+                "шосе",
+                "в",
+                "смт",
+                "просп",
+                "№",
+            ],
         ),
-        'lowercase'
-    ]
+        "lowercase",
+    ],
 )
 
 companies_idx.analyzer(namesAutocompleteAnalyzer)
@@ -249,21 +288,35 @@ companies_idx.analyzer(namesAutocompleteSearchAnalyzer)
 class Company(DocType):
     """Company document."""
 
-    full_edrpou = Keyword(index=True, copy_to="all")
-    addresses = Text(analyzer='ukrainianStopwordsAnalyzer', copy_to="all")
-    persons = Text(analyzer='ukrainian', copy_to="all")
-    companies = Text(analyzer='ukrainian', copy_to="all")
-    company_profiles = Keyword(index=True, copy_to="all")
+    full_edrpou = Keyword(
+        index=True, copy_to="all"
+    )
+    addresses = Text(
+        analyzer="ukrainianStopwordsAnalyzer",
+        copy_to="all",
+        term_vector="with_positions_offsets",
+    )
+    persons = Text(
+        analyzer="ukrainian", copy_to="all", term_vector="with_positions_offsets"
+    )
+    companies = Text(
+        analyzer="ukrainian", copy_to="all", term_vector="with_positions_offsets"
+    )
+    company_profiles = Keyword(
+        index=True, copy_to="all"
+    )
     latest_record = Object()
-    raw_records = Text(analyzer='ukrainian', copy_to="all")
+    raw_records = Text(
+        analyzer="ukrainian", copy_to="all", term_vector="with_positions_offsets"
+    )
     names_autocomplete = Text(
-        analyzer='namesAutocompleteAnalyzer',
+        analyzer="namesAutocompleteAnalyzer",
         search_analyzer="namesAutocompleteSearchAnalyzer",
-        fields={'raw': Text(index=True)},
-        term_vector="with_positions_offsets"
+        fields={"raw": Text(index=True)},
+        term_vector="with_positions_offsets",
     )
 
-    all = Text(analyzer='ukrainian')
+    all = Text(analyzer="ukrainian")
 
     class Meta:
         doc_type = "edrdr_companies_doctype"

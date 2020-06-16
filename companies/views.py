@@ -220,6 +220,7 @@ class SearchView(TemplateView):
                 require_field_match=False,
                 fragment_size=100,
                 number_of_fragments=10,
+                type="fvh"
             )
             .source(
                 [
