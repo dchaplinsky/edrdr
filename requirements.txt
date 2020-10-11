@@ -1,4 +1,4 @@
-Django==2.2.13
+Django==2.2.16
 Jinja2==2.10.1
 redis==2.10.6
 redispy==3.0.0
@@ -6,7 +6,7 @@ requests==2.21.0
 requests-cache==0.4.13
 tokenize-uk==0.2.0
 translitua==1.3.0
-psycopg2==2.7.3.2
+psycopg2-binary==2.8.3
 tqdm==4.23.0
 python-dateutil==2.7.2
 elasticsearch-dsl==6.1.0

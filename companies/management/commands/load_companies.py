@@ -660,6 +660,10 @@ class Command(BaseCommand):
         parsed = []
 
         for founder_rec in company.get("founders", []) or []:
+            if founder_rec is None:
+                logger.warning(f"Degenerated record {company}")
+                continue
+
             rec_hash = sha1(founder_rec.lower().encode("utf8")).hexdigest()
 
             cached = self.redis.hget(self.redis_cache_key, rec_hash)
