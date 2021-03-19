@@ -1,5 +1,5 @@
 Django==2.2.16
-Jinja2==2.10.1
+Jinja2==2.11.3
 redis==2.10.6
 redispy==3.0.0
 requests==2.21.0
