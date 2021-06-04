@@ -1,4 +1,4 @@
-Django==2.2.16
+Django==2.2.21
 Jinja2==2.10.1
 redis==2.10.6
 redispy==3.0.0
